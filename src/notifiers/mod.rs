@@ -1,3 +1,4 @@
+pub mod slack;
 pub mod telegram;
 
 use crate::config::Config;
@@ -16,6 +17,16 @@ pub fn build_notifiers(config: &Config) -> Vec<Box<dyn Notifier>> {
                     }
                 } else {
                     eprintln!("Warning: telegram backend enabled but not configured");
+                }
+            }
+            "slack" => {
+                if let Some(slack_config) = &config.slack {
+                    match slack::SlackNotifier::new(slack_config) {
+                        Ok(n) => notifiers.push(Box::new(n)),
+                        Err(e) => eprintln!("Warning: failed to init slack: {}", e),
+                    }
+                } else {
+                    eprintln!("Warning: slack backend enabled but not configured");
                 }
             }
             other => {

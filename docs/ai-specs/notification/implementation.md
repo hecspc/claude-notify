@@ -17,6 +17,7 @@ src/
   notifiers/
     mod.rs             # Backend registry: config → Vec<Box<dyn Notifier>>
     telegram.rs        # Telegram Bot API implementation (ureq)
+    slack.rs           # Slack Incoming Webhook implementation (ureq), HTML→mrkdwn conversion
   setup.rs             # setup subcommand: write backend config + hooks (--user or --project)
 ```
 
@@ -31,7 +32,7 @@ toml = "0.8"
 clap = { version = "4", features = ["derive"] }
 ```
 
-- **serde + serde_json** — deserialize hook JSON payloads, serialize Telegram API requests
+- **serde + serde_json** — deserialize hook JSON payloads, serialize API requests
 - **ureq** — lightweight blocking HTTP client, no async runtime needed
 - **toml** — parse `~/.config/claude-notify/config.toml`
 - **clap** — CLI argument parsing with derive macros
@@ -78,12 +79,19 @@ pub struct Config {
     pub events: Option<Vec<String>>,
     #[serde(default)]
     pub telegram: Option<TelegramConfig>,
+    #[serde(default)]
+    pub slack: Option<SlackConfig>,
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct TelegramConfig {
     pub bot_token: Option<String>,
     pub chat_id: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct SlackConfig {
+    pub webhook_url: Option<String>,
 }
 
 impl Config {
@@ -127,6 +135,11 @@ impl Config {
         }
         if let Ok(val) = std::env::var("TELEGRAM_CHAT_ID") {
             tg.chat_id = Some(val);
+        }
+
+        if let Ok(val) = std::env::var("SLACK_WEBHOOK_URL") {
+            let slack = self.slack.get_or_insert_with(SlackConfig::default);
+            slack.webhook_url = Some(val);
         }
     }
 
@@ -211,9 +224,65 @@ impl Notifier for TelegramNotifier {
 
 Uses HTML parse mode (only need to escape `< > &`). `disable_web_page_preview` prevents link previews cluttering the notification.
 
+### `src/notifiers/slack.rs`
+
+```rust
+use crate::config::SlackConfig;
+use crate::notifier::Notifier;
+
+pub struct SlackNotifier {
+    webhook_url: String,
+}
+
+impl SlackNotifier {
+    pub fn new(config: &SlackConfig) -> Result<Self, Box<dyn std::error::Error>> {
+        let webhook_url = config
+            .webhook_url
+            .clone()
+            .ok_or("slack webhook_url not configured")?;
+        Ok(Self { webhook_url })
+    }
+
+    fn html_to_mrkdwn(html: &str) -> String {
+        html.replace("<b>", "*")
+            .replace("</b>", "*")
+            .replace("&amp;", "&")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+    }
+}
+
+impl Notifier for SlackNotifier {
+    fn send(&self, message: &str) -> Result<(), Box<dyn std::error::Error>> {
+        let text = Self::html_to_mrkdwn(message);
+
+        let body = serde_json::json!({
+            "text": text,
+        });
+
+        let response = ureq::post(&self.webhook_url).send_json(&body)?;
+
+        if response.status() != 200 {
+            let status = response.status();
+            let body = response.into_body().read_to_string()?;
+            return Err(format!("Slack webhook error {}: {}", status, body).into());
+        }
+
+        Ok(())
+    }
+
+    fn name(&self) -> &str {
+        "slack"
+    }
+}
+```
+
+Uses Slack Incoming Webhooks — simplest integration, no OAuth needed. `html_to_mrkdwn()` converts the HTML-formatted message (designed for Telegram) to Slack's mrkdwn format: `<b>`→`*` for bold, and unescapes HTML entities.
+
 ### `src/notifiers/mod.rs`
 
 ```rust
+pub mod slack;
 pub mod telegram;
 
 use crate::config::Config;
@@ -232,6 +301,16 @@ pub fn build_notifiers(config: &Config) -> Vec<Box<dyn Notifier>> {
                     }
                 } else {
                     eprintln!("Warning: telegram backend enabled but not configured");
+                }
+            }
+            "slack" => {
+                if let Some(slack_config) = &config.slack {
+                    match slack::SlackNotifier::new(slack_config) {
+                        Ok(n) => notifiers.push(Box::new(n)),
+                        Err(e) => eprintln!("Warning: failed to init slack: {}", e),
+                    }
+                } else {
+                    eprintln!("Warning: slack backend enabled but not configured");
                 }
             }
             other => {
@@ -432,6 +511,21 @@ fn write_backend_config(backend: &SetupBackend) -> Result<(), Box<dyn std::error
             tg_table.insert("chat_id".to_string(), toml::Value::String(chat_id.clone()));
             config.insert("telegram".to_string(), toml::Value::Table(tg_table));
         }
+        SetupBackend::Slack { webhook_url } => {
+            let backends = config
+                .entry("backends")
+                .or_insert(toml::Value::Array(vec![]));
+            if let toml::Value::Array(arr) = backends {
+                let slack = toml::Value::String("slack".to_string());
+                if !arr.contains(&slack) {
+                    arr.push(slack);
+                }
+            }
+
+            let mut slack_table = toml::Table::new();
+            slack_table.insert("webhook_url".to_string(), toml::Value::String(webhook_url.clone()));
+            config.insert("slack".to_string(), toml::Value::Table(slack_table));
+        }
     }
 
     if let Some(parent) = path.parent() {
@@ -514,6 +608,11 @@ enum SetupBackend {
         /// Chat ID from @userinfobot
         chat_id: String,
     },
+    /// Configure Slack notifications via Incoming Webhook
+    Slack {
+        /// Webhook URL from Slack app configuration
+        webhook_url: String,
+    },
 }
 
 fn main() {
@@ -544,6 +643,7 @@ Usage:
 ```
 claude-notify setup telegram <BOT_TOKEN> <CHAT_ID>             # user-level (default)
 claude-notify setup telegram <BOT_TOKEN> <CHAT_ID> --project   # project-level
+claude-notify setup slack <WEBHOOK_URL>                        # Slack notifications
 claude-notify --dry-run                                        # test formatting
 ```
 
@@ -607,6 +707,7 @@ Claude Code Event
         → format message (formatter.rs)
         → dispatch to backends (notifiers/mod.rs)
           → TelegramNotifier.send() → Telegram Bot API
+          → SlackNotifier.send() → Slack Incoming Webhook
 ```
 
 ## Configuration
@@ -614,7 +715,7 @@ Claude Code Event
 Config file: `~/.config/claude-notify/config.toml`
 
 ```toml
-backends = ["telegram"]
+backends = ["telegram"]  # or ["slack"], or ["telegram", "slack"] for both
 
 # Optional: filter which events trigger notifications
 # events = ["permission_prompt", "idle_prompt", "elicitation_dialog", "stop", "task_completed"]
@@ -622,6 +723,9 @@ backends = ["telegram"]
 [telegram]
 bot_token = "123456:ABC-DEF..."
 chat_id = "123456789"
+
+[slack]
+webhook_url = "https://hooks.slack.com/services/T.../B.../xxx"
 ```
 
 Environment variables override config file values:
@@ -632,6 +736,7 @@ Environment variables override config file values:
 | `NOTIFY_EVENTS` | `events` |
 | `TELEGRAM_BOT_TOKEN` | `[telegram].bot_token` |
 | `TELEGRAM_CHAT_ID` | `[telegram].chat_id` |
+| `SLACK_WEBHOOK_URL` | `[slack].webhook_url` |
 
 ## Installation
 
@@ -639,6 +744,8 @@ Environment variables override config file values:
 cargo build --release
 cp target/release/claude-notify ~/.local/bin/
 claude-notify setup telegram <BOT_TOKEN> <CHAT_ID>
+# Or for Slack:
+claude-notify setup slack <WEBHOOK_URL>
 ```
 
 ## Adding a New Backend

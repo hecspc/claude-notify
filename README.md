@@ -1,12 +1,12 @@
 # claude-notify
 
-Notification bot for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) hook events. Get Telegram notifications when Claude needs your input — permission prompts, questions, idle sessions, or task completions.
+Notification bot for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) hook events. Get Telegram or Slack notifications when Claude needs your input — permission prompts, questions, idle sessions, or task completions.
 
 Built in Rust for a single native binary with no runtime dependencies.
 
 ## Why
 
-When running Claude Code sessions (especially long-running or parallel ones), sessions sit idle waiting for attention. `claude-notify` sends notifications to Telegram so you can monitor from mobile or another screen.
+When running Claude Code sessions (especially long-running or parallel ones), sessions sit idle waiting for attention. `claude-notify` sends notifications to Telegram or Slack so you can monitor from mobile or another screen.
 
 ## Quick Start
 
@@ -17,6 +17,8 @@ cp target/release/claude-notify ~/.local/bin/
 
 # One-command setup: configures credentials + hooks
 claude-notify setup telegram YOUR_BOT_TOKEN YOUR_CHAT_ID
+# Or for Slack:
+claude-notify setup slack https://hooks.slack.com/services/T.../B.../xxx
 ```
 
 This writes `~/.config/claude-notify/config.toml` with your credentials and adds hooks to `~/.claude/settings.json`.
@@ -65,6 +67,7 @@ Sessions are identified by a friendly name derived from the session_id (e.g. `sa
 claude-notify                                                  # Normal: read hook JSON from stdin, notify
 claude-notify setup telegram <BOT_TOKEN> <CHAT_ID>             # Configure credentials + hooks (user-level)
 claude-notify setup telegram <BOT_TOKEN> <CHAT_ID> --project   # Configure hooks in current project
+claude-notify setup slack <WEBHOOK_URL>                        # Configure Slack notifications
 claude-notify mute                                             # Mute all notifications
 claude-notify mute safe-seal                                   # Mute a specific session (friendly name or UUID)
 claude-notify unmute                                           # Unmute all
@@ -101,7 +104,7 @@ Both scopes write backend credentials to `~/.config/claude-notify/config.toml`.
 `~/.config/claude-notify/config.toml`:
 
 ```toml
-backends = ["telegram"]
+backends = ["telegram"]  # or ["slack"], or ["telegram", "slack"] for both
 
 # Optional: filter which events trigger notifications (defaults to all)
 # events = ["permission_prompt", "idle_prompt", "elicitation_dialog", "stop", "task_completed"]
@@ -109,6 +112,9 @@ backends = ["telegram"]
 [telegram]
 bot_token = "123456:ABC-DEF..."
 chat_id = "123456789"
+
+[slack]
+webhook_url = "https://hooks.slack.com/services/T.../B.../xxx"
 ```
 
 ### Environment Variables
@@ -117,10 +123,11 @@ Env vars override config file values.
 
 | Variable | Purpose | Example |
 |---|---|---|
-| `NOTIFY_BACKEND` | Active backend(s), comma-separated | `telegram` |
+| `NOTIFY_BACKEND` | Active backend(s), comma-separated | `telegram`, `slack`, `telegram,slack` |
 | `NOTIFY_EVENTS` | Event filter, comma-separated | `permission_prompt,idle_prompt` |
 | `TELEGRAM_BOT_TOKEN` | Token from @BotFather | `123456:ABC-DEF...` |
 | `TELEGRAM_CHAT_ID` | User's chat ID | `123456789` |
+| `SLACK_WEBHOOK_URL` | Slack Incoming Webhook URL | `https://hooks.slack.com/services/...` |
 
 ### Event Filtering
 
@@ -129,6 +136,13 @@ To silence noisy events like "Response Complete":
 ```toml
 events = ["permission_prompt", "idle_prompt", "elicitation_dialog", "task_completed"]
 ```
+
+## Slack Setup
+
+1. Go to [Slack API: Incoming Webhooks](https://api.slack.com/messaging/webhooks) and create a new app (or use an existing one)
+2. Enable Incoming Webhooks and add one to your desired channel
+3. Copy the webhook URL
+4. Run `claude-notify setup slack <WEBHOOK_URL>`
 
 ## Telegram Setup
 
@@ -162,10 +176,10 @@ All hooks use `async: true` so they never block Claude Code.
 ## Architecture
 
 ```
-Claude Code Event → Hook (async) → claude-notify → Notifier trait → Telegram
+Claude Code Event → Hook (async) → claude-notify → Notifier trait → Telegram / Slack
 ```
 
-The notification backend is abstracted behind a `Notifier` trait. Adding new backends (Slack, WhatsApp, etc.) requires implementing a single trait:
+The notification backend is abstracted behind a `Notifier` trait. Adding new backends (WhatsApp, Discord, etc.) requires implementing a single trait:
 
 ```rust
 pub trait Notifier {

@@ -2,6 +2,13 @@
 
 All notable changes to claude-notify are documented here.
 
+## [Unreleased]
+
+### Added
+- Slack notification backend via Incoming Webhooks (`claude-notify setup slack <WEBHOOK_URL>`)
+- `SLACK_WEBHOOK_URL` environment variable override
+- HTML-to-mrkdwn conversion for Slack message formatting
+
 ## [0.1.0] - 2026-03-14
 
 ### Added

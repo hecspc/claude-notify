@@ -58,6 +58,11 @@ pub enum SetupBackend {
         /// Chat ID from @userinfobot
         chat_id: String,
     },
+    /// Configure Slack notifications via Incoming Webhook
+    Slack {
+        /// Webhook URL from Slack app configuration
+        webhook_url: String,
+    },
 }
 
 fn mute_dir() -> PathBuf {

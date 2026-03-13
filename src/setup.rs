@@ -60,6 +60,26 @@ fn write_backend_config(backend: &SetupBackend) -> Result<(), Box<dyn std::error
             );
             config.insert("telegram".to_string(), toml::Value::Table(tg_table));
         }
+        SetupBackend::Slack { webhook_url } => {
+            // Set backends to include slack
+            let backends = config
+                .entry("backends")
+                .or_insert(toml::Value::Array(vec![]));
+            if let toml::Value::Array(arr) = backends {
+                let slack = toml::Value::String("slack".to_string());
+                if !arr.contains(&slack) {
+                    arr.push(slack);
+                }
+            }
+
+            // Set slack config
+            let mut slack_table = toml::Table::new();
+            slack_table.insert(
+                "webhook_url".to_string(),
+                toml::Value::String(webhook_url.clone()),
+            );
+            config.insert("slack".to_string(), toml::Value::Table(slack_table));
+        }
     }
 
     if let Some(parent) = path.parent() {

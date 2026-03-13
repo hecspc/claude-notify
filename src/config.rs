@@ -8,12 +8,19 @@ pub struct Config {
     pub events: Option<Vec<String>>,
     #[serde(default)]
     pub telegram: Option<TelegramConfig>,
+    #[serde(default)]
+    pub slack: Option<SlackConfig>,
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct TelegramConfig {
     pub bot_token: Option<String>,
     pub chat_id: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct SlackConfig {
+    pub webhook_url: Option<String>,
 }
 
 impl Config {
@@ -57,6 +64,11 @@ impl Config {
         }
         if let Ok(val) = std::env::var("TELEGRAM_CHAT_ID") {
             tg.chat_id = Some(val);
+        }
+
+        if let Ok(val) = std::env::var("SLACK_WEBHOOK_URL") {
+            let slack = self.slack.get_or_insert_with(SlackConfig::default);
+            slack.webhook_url = Some(val);
         }
     }
 
