@@ -28,20 +28,36 @@ This writes `~/.config/claude-notify/config.toml` with your credentials and adds
 | Permission prompt | :bell: | Claude needs tool approval (Bash, Edit, etc.) |
 | Idle prompt | :hourglass_flowing_sand: | Claude is waiting for your response |
 | Elicitation dialog | :question: | Claude is asking a question |
-| Response complete | :white_check_mark: | Claude finished responding |
-| Task completed | :tada: | A background task finished |
+| Response complete | :white_check_mark: | Claude finished responding (includes last message summary) |
+| Task completed | :tada: | A background task finished (includes task subject, teammate, description) |
 
 ## Message Format
 
 ```
 🔔 Permission Required
-Session: a3f2b1c9 | engineering-bot
+Session: safe-seal (66a021e0) | engineering-bot
 ─────────────────
 Tool: Bash
 Action: npm install express
 ```
 
-Session shows a truncated `session_id` + project name for quick identification across parallel sessions.
+```
+✅ Response Complete
+Session: safe-seal (66a021e0) | engineering-bot
+─────────────────
+I've updated the README.md with the new setup instructions and rebuilt the release binary.
+```
+
+```
+🎉 Task Completed
+Session: pink-swan (abc123) | engineering-bot
+Task: Implement notification system
+Teammate: implementer
+─────────────────
+Add Telegram notifications for Claude Code hook events
+```
+
+Sessions are identified by a friendly name derived from the session_id (e.g. `safe-seal`) plus the short UUID and project name, for quick identification across parallel sessions.
 
 ## CLI Usage
 
@@ -146,8 +162,11 @@ pub trait Notifier {
 # Dry run a permission prompt
 echo '{"session_id":"abc123","cwd":"/tmp/test","hook_event_name":"Notification","notification_type":"permission_prompt","tool_name":"Bash","tool_input":{"command":"npm install"}}' | claude-notify --dry-run
 
-# Dry run a stop event
-echo '{"session_id":"abc123","cwd":"/tmp/test","hook_event_name":"Stop"}' | claude-notify --dry-run
+# Dry run a stop event with last message
+echo '{"session_id":"abc123","cwd":"/tmp/test","hook_event_name":"Stop","last_assistant_message":"I fixed the bug in the login handler."}' | claude-notify --dry-run
+
+# Dry run a task completed event
+echo '{"session_id":"abc123","cwd":"/tmp/test","hook_event_name":"TaskCompleted","task_subject":"Fix auth bug","teammate_name":"implementer"}' | claude-notify --dry-run
 ```
 
 ## License

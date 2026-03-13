@@ -29,7 +29,7 @@ src/
   main.rs           — CLI entry point (clap subcommands). Routes to setup, --dry-run, or stdin→format→send
   types.rs          — HookEvent struct (serde). All optional fields use Option<T>
   config.rs         — Config + TelegramConfig. Loads ~/.config/claude-notify/config.toml, env vars override
-  formatter.rs      — format_message() maps HookEvent → HTML string. Uses FormattedBody internal struct
+  formatter.rs      — format_message() maps HookEvent → HTML string. friendly_name() hashes session_id to adjective-noun pair
   notifier.rs       — Notifier trait (send + name)
   notifiers/
     mod.rs          — build_notifiers() registry: config → Vec<Box<dyn Notifier>>

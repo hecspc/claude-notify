@@ -13,8 +13,20 @@ pub struct HookEvent {
     pub tool_name: Option<String>,
     /// Present for permission_prompt notifications
     pub tool_input: Option<serde_json::Value>,
-    /// Present for Stop / TaskCompleted events
+    /// Present for Stop events — true when continuing from a previous stop hook
     pub stop_hook_active: Option<bool>,
+    /// Present for Stop events — Claude's final response text
+    pub last_assistant_message: Option<String>,
     /// Present for elicitation_dialog notifications
     pub message: Option<String>,
+    /// Present for TaskCompleted events
+    pub task_id: Option<String>,
+    /// Present for TaskCompleted events — title of the task
+    pub task_subject: Option<String>,
+    /// Present for TaskCompleted events — detailed description
+    pub task_description: Option<String>,
+    /// Present for TaskCompleted events — name of the teammate
+    pub teammate_name: Option<String>,
+    /// Present for TaskCompleted events — name of the team
+    pub team_name: Option<String>,
 }

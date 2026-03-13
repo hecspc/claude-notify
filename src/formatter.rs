@@ -3,6 +3,7 @@ use crate::types::HookEvent;
 const MAX_MESSAGE_LEN: usize = 4096;
 
 pub fn format_message(event: &HookEvent) -> String {
+    let session_name = friendly_name(&event.session_id);
     let session_short = if event.session_id.len() > 8 {
         &event.session_id[..8]
     } else {
@@ -15,12 +16,12 @@ pub fn format_message(event: &HookEvent) -> String {
         .and_then(|p| p.rsplit('/').next())
         .unwrap_or("unknown");
 
-    let session_line = format!("Session: {} | {}", session_short, project);
+    let session_line = format!("Session: {} ({}) | {}", session_name, session_short, project);
 
     let body = match event.hook_event_name.as_str() {
         "Notification" => format_notification(event),
-        "Stop" => format_stop(),
-        "TaskCompleted" => format_task_completed(),
+        "Stop" => format_stop(event),
+        "TaskCompleted" => format_task_completed(event),
         other => FormattedBody {
             header: format!("\u{2139}\u{fe0f} Event: {}", html_escape(other)),
             detail: String::new(),
@@ -70,17 +71,64 @@ fn format_notification(event: &HookEvent) -> FormattedBody {
     }
 }
 
-fn format_stop() -> FormattedBody {
+fn format_stop(event: &HookEvent) -> FormattedBody {
+    let detail = match &event.last_assistant_message {
+        Some(msg) if !msg.is_empty() => {
+            let summary = truncate_lines(msg, 500);
+            format!(
+                "\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\n{}",
+                html_escape(&summary)
+            )
+        }
+        _ => "Claude has finished responding.".to_string(),
+    };
+
     FormattedBody {
         header: "\u{2705} <b>Response Complete</b>".to_string(),
-        detail: "Claude has finished responding.".to_string(),
+        detail,
     }
 }
 
-fn format_task_completed() -> FormattedBody {
+fn format_task_completed(event: &HookEvent) -> FormattedBody {
+    let mut lines = Vec::new();
+
+    if let Some(subject) = &event.task_subject {
+        lines.push(format!("Task: {}", html_escape(subject)));
+    }
+    if let Some(teammate) = &event.teammate_name {
+        lines.push(format!("Teammate: {}", html_escape(teammate)));
+    }
+    if let Some(desc) = &event.task_description {
+        if !desc.is_empty() {
+            let short = truncate_lines(desc, 300);
+            lines.push(format!(
+                "\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\n{}",
+                html_escape(&short)
+            ));
+        }
+    }
+
+    if lines.is_empty() {
+        lines.push("A background task has finished.".to_string());
+    }
+
     FormattedBody {
         header: "\u{1f389} <b>Task Completed</b>".to_string(),
-        detail: "A background task has finished.".to_string(),
+        detail: lines.join("\n"),
+    }
+}
+
+/// Truncate to max_chars, cutting at the last newline or word boundary.
+fn truncate_lines(s: &str, max_chars: usize) -> String {
+    if s.len() <= max_chars {
+        return s.to_string();
+    }
+    let truncated = &s[..max_chars];
+    // Try to cut at last newline
+    if let Some(pos) = truncated.rfind('\n') {
+        format!("{}...", &s[..pos])
+    } else {
+        format!("{}...", truncated.trim_end())
     }
 }
 
@@ -120,4 +168,35 @@ fn truncate(s: &str, max: usize) -> String {
     } else {
         format!("{}...", &s[..max - 3])
     }
+}
+
+/// Maps a session_id to a deterministic human-friendly "adjective-noun" name.
+fn friendly_name(session_id: &str) -> String {
+    const ADJECTIVES: &[&str] = &[
+        "bold", "calm", "cool", "dark", "deep", "dry", "fair", "fast",
+        "fine", "free", "glad", "gold", "good", "gray", "keen", "kind",
+        "late", "lean", "live", "long", "loud", "mild", "neat", "nice",
+        "pale", "pure", "rare", "raw", "red", "rich", "safe", "slim",
+        "slow", "soft", "tall", "tame", "thin", "true", "vast", "warm",
+        "weak", "wide", "wild", "wise", "blue", "cold", "dull", "flat",
+        "full", "grim", "high", "iron", "jade", "lazy", "mint", "opal",
+        "pink", "plum", "ruby", "rust", "sage", "sand", "silk", "snow",
+    ];
+
+    const NOUNS: &[&str] = &[
+        "ant", "ape", "bat", "bee", "bird", "boar", "bull", "cat",
+        "colt", "crab", "crow", "deer", "dog", "dove", "duck", "elk",
+        "fawn", "fish", "frog", "goat", "hare", "hawk", "ibis", "jay",
+        "kite", "lark", "lion", "lynx", "mole", "moth", "newt", "oryx",
+        "owl", "puma", "ram", "seal", "slug", "swan", "toad", "vole",
+        "wasp", "wolf", "wren", "yak", "bear", "carp", "dodo", "ewe",
+        "fox", "gnu", "hen", "imp", "koi", "lamb", "mink", "ox",
+        "pug", "quail", "ray", "shrew", "tern", "urchin", "viper", "worm",
+    ];
+
+    // Simple hash: sum of bytes
+    let hash: usize = session_id.bytes().map(|b| b as usize).sum();
+    let adj = ADJECTIVES[hash % ADJECTIVES.len()];
+    let noun = NOUNS[(hash / ADJECTIVES.len()) % NOUNS.len()];
+    format!("{}-{}", adj, noun)
 }

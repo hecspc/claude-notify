@@ -551,40 +551,46 @@ Flow: parse CLI → route to `setup` subcommand or stdin mode → read JSON → 
 
 ## Message Output Examples
 
+Sessions are identified by a friendly name derived from the session_id hash (e.g. `safe-seal`) plus the short UUID and project name.
+
 **Permission prompt:**
 ```
 🔔 Permission Required
-Session: a3f2b1c9 | engineering-bot
+Session: safe-seal (a3f2b1c9) | engineering-bot
 ─────────────────
 Tool: Bash
 Action: npm install express
 ```
 
-**Stop (response complete):**
+**Stop (response complete) — includes last assistant message:**
 ```
 ✅ Response Complete
-Session: abc123 | test
-Claude has finished responding.
+Session: safe-seal (66a021e0) | engineering-bot
+─────────────────
+I've updated the README.md with the new setup instructions and rebuilt the release binary.
 ```
 
-**Task completed:**
+**Task completed — includes task subject, teammate, and description:**
 ```
 🎉 Task Completed
-Session: abc123 | test
-A background task has finished.
+Session: pink-swan (abc123) | engineering-bot
+Task: Implement notification system
+Teammate: implementer
+─────────────────
+Add Telegram notifications for Claude Code hook events
 ```
 
 **Idle prompt:**
 ```
 ⏳ Waiting for Input
-Session: abc123 | test
+Session: calm-fox (abc123) | test
 Claude is idle and waiting for your response.
 ```
 
 **Elicitation dialog:**
 ```
 ❓ Question
-Session: abc123 | test
+Session: calm-fox (abc123) | test
 Which database should I use?
 ```
 
