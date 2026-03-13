@@ -26,7 +26,7 @@ echo '{"session_id":"abc","cwd":"/tmp","hook_event_name":"Notification","notific
 
 ```
 src/
-  main.rs           — CLI entry point (clap subcommands). Routes to setup, --dry-run, or stdin→format→send
+  main.rs           — CLI entry point (clap subcommands). Routes to setup, mute/unmute/status, --dry-run, or stdin→format→send
   types.rs          — HookEvent struct (serde). All optional fields use Option<T>
   config.rs         — Config + TelegramConfig. Loads ~/.config/claude-notify/config.toml, env vars override
   formatter.rs      — format_message() maps HookEvent → HTML string. friendly_name() hashes session_id to adjective-noun pair
@@ -40,6 +40,7 @@ src/
 ## Runtime File Paths
 
 - `~/.config/claude-notify/config.toml` — backend credentials + event filter (written by `setup`, read at runtime)
+- `~/.config/claude-notify/muted/` — mute state: `_global` file = all muted, session name/UUID files = per-session mute
 - `~/.claude/settings.json` — user-level hooks (`--user` scope, default)
 - `.claude/settings.json` — project-level hooks (`--project` scope)
 

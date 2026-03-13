@@ -65,9 +65,27 @@ Sessions are identified by a friendly name derived from the session_id (e.g. `sa
 claude-notify                                                  # Normal: read hook JSON from stdin, notify
 claude-notify setup telegram <BOT_TOKEN> <CHAT_ID>             # Configure credentials + hooks (user-level)
 claude-notify setup telegram <BOT_TOKEN> <CHAT_ID> --project   # Configure hooks in current project
+claude-notify mute                                             # Mute all notifications
+claude-notify mute safe-seal                                   # Mute a specific session (friendly name or UUID)
+claude-notify unmute                                           # Unmute all
+claude-notify unmute safe-seal                                 # Unmute a specific session
+claude-notify status                                           # Show mute status
 claude-notify --dry-run                                        # Print formatted message to stdout, don't send
 claude-notify --version                                        # Print version
 ```
+
+### Muting
+
+Mute notifications globally or per-session. Use the friendly name from the notification (e.g. `safe-seal`) or the raw session UUID.
+
+```bash
+claude-notify mute              # Silence everything
+claude-notify mute safe-seal    # Silence one session
+claude-notify status            # Check what's muted
+claude-notify unmute            # Re-enable all
+```
+
+Mute state is stored as files in `~/.config/claude-notify/muted/`.
 
 ### Setup Scopes
 

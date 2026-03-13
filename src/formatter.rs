@@ -171,7 +171,7 @@ fn truncate(s: &str, max: usize) -> String {
 }
 
 /// Maps a session_id to a deterministic human-friendly "adjective-noun" name.
-fn friendly_name(session_id: &str) -> String {
+pub fn friendly_name(session_id: &str) -> String {
     const ADJECTIVES: &[&str] = &[
         "bold", "calm", "cool", "dark", "deep", "dry", "fair", "fast",
         "fine", "free", "glad", "gold", "good", "gray", "keen", "kind",

@@ -7,6 +7,7 @@ mod types;
 
 use clap::{Parser, Subcommand};
 use std::io::Read;
+use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(name = "claude-notify", version, about = "Notification bot for Claude Code hook events")]
@@ -34,10 +35,22 @@ enum Command {
         #[arg(long, group = "scope")]
         project: bool,
     },
+    /// Mute notifications (globally or for a session)
+    Mute {
+        /// Session ID or friendly name to mute (omit to mute all)
+        session: Option<String>,
+    },
+    /// Unmute notifications (globally or for a session)
+    Unmute {
+        /// Session ID or friendly name to unmute (omit to unmute all)
+        session: Option<String>,
+    },
+    /// Show mute status
+    Status,
 }
 
 #[derive(Subcommand)]
-enum SetupBackend {
+pub enum SetupBackend {
     /// Configure Telegram notifications
     Telegram {
         /// Bot token from @BotFather
@@ -47,23 +60,131 @@ enum SetupBackend {
     },
 }
 
+fn mute_dir() -> PathBuf {
+    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+    PathBuf::from(home)
+        .join(".config")
+        .join("claude-notify")
+        .join("muted")
+}
+
+fn is_muted(session_id: &str) -> bool {
+    let dir = mute_dir();
+    if dir.join("_global").exists() {
+        return true;
+    }
+    // Check by exact session_id
+    if dir.join(session_id).exists() {
+        return true;
+    }
+    // Check by friendly name
+    let friendly = formatter::friendly_name(session_id);
+    if dir.join(&friendly).exists() {
+        return true;
+    }
+    false
+}
+
+fn cmd_mute(session: Option<String>) {
+    let dir = mute_dir();
+    std::fs::create_dir_all(&dir).ok();
+
+    let name = session.as_deref().unwrap_or("_global");
+    let path = dir.join(name);
+    std::fs::write(&path, "").ok();
+
+    if name == "_global" {
+        println!("All notifications muted.");
+    } else {
+        println!("Session '{}' muted.", name);
+    }
+}
+
+fn cmd_unmute(session: Option<String>) {
+    let dir = mute_dir();
+
+    match session.as_deref() {
+        Some(name) => {
+            let path = dir.join(name);
+            if path.exists() {
+                std::fs::remove_file(&path).ok();
+                println!("Session '{}' unmuted.", name);
+            } else {
+                println!("Session '{}' was not muted.", name);
+            }
+        }
+        None => {
+            // Remove everything in the muted dir
+            if dir.exists() {
+                if let Ok(entries) = std::fs::read_dir(&dir) {
+                    for entry in entries.flatten() {
+                        std::fs::remove_file(entry.path()).ok();
+                    }
+                }
+            }
+            println!("All notifications unmuted.");
+        }
+    }
+}
+
+fn cmd_status() {
+    let dir = mute_dir();
+
+    if dir.join("_global").exists() {
+        println!("Notifications: MUTED (all)");
+        return;
+    }
+
+    let mut muted_sessions = Vec::new();
+    if dir.exists() {
+        if let Ok(entries) = std::fs::read_dir(&dir) {
+            for entry in entries.flatten() {
+                if let Some(name) = entry.file_name().to_str() {
+                    muted_sessions.push(name.to_string());
+                }
+            }
+        }
+    }
+
+    if muted_sessions.is_empty() {
+        println!("Notifications: active");
+    } else {
+        println!("Notifications: active (except muted sessions)");
+        for s in &muted_sessions {
+            println!("  - {}", s);
+        }
+    }
+}
+
 fn main() {
     let cli = Cli::parse();
 
-    if let Some(Command::Setup { backend, user, project }) = cli.command {
-        let scope = if project {
-            setup::Scope::Project
-        } else if user {
-            setup::Scope::User
-        } else {
-            setup::Scope::User
-        };
-
-        if let Err(e) = setup::run_setup(&backend, scope) {
-            eprintln!("Setup failed: {}", e);
-            std::process::exit(1);
+    match cli.command {
+        Some(Command::Setup { backend, user: _, project }) => {
+            let scope = if project {
+                setup::Scope::Project
+            } else {
+                setup::Scope::User
+            };
+            if let Err(e) = setup::run_setup(&backend, scope) {
+                eprintln!("Setup failed: {}", e);
+                std::process::exit(1);
+            }
+            return;
         }
-        return;
+        Some(Command::Mute { session }) => {
+            cmd_mute(session);
+            return;
+        }
+        Some(Command::Unmute { session }) => {
+            cmd_unmute(session);
+            return;
+        }
+        Some(Command::Status) => {
+            cmd_status();
+            return;
+        }
+        None => {}
     }
 
     // Read hook event JSON from stdin
@@ -80,6 +201,11 @@ fn main() {
             std::process::exit(1);
         }
     };
+
+    // Check mute status before anything else
+    if is_muted(&event.session_id) {
+        return;
+    }
 
     let config = config::Config::load();
 
