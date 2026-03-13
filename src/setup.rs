@@ -1,12 +1,78 @@
+use crate::SetupBackend;
 use std::path::PathBuf;
 
-fn settings_path() -> PathBuf {
-    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-    PathBuf::from(home).join(".claude").join("settings.json")
+pub enum Scope {
+    User,
+    Project,
 }
 
-pub fn run_setup() -> Result<(), Box<dyn std::error::Error>> {
-    let path = settings_path();
+fn settings_path(scope: &Scope) -> PathBuf {
+    match scope {
+        Scope::User => {
+            let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+            PathBuf::from(home).join(".claude").join("settings.json")
+        }
+        Scope::Project => PathBuf::from(".claude").join("settings.json"),
+    }
+}
+
+fn config_path() -> PathBuf {
+    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+    PathBuf::from(home)
+        .join(".config")
+        .join("claude-notify")
+        .join("config.toml")
+}
+
+fn write_backend_config(backend: &SetupBackend) -> Result<(), Box<dyn std::error::Error>> {
+    let path = config_path();
+
+    // Load existing config or start fresh
+    let mut config: toml::Table = if path.exists() {
+        let content = std::fs::read_to_string(&path)?;
+        content.parse()?
+    } else {
+        toml::Table::new()
+    };
+
+    match backend {
+        SetupBackend::Telegram { bot_token, chat_id } => {
+            // Set backends to include telegram
+            let backends = config
+                .entry("backends")
+                .or_insert(toml::Value::Array(vec![]));
+            if let toml::Value::Array(arr) = backends {
+                let tg = toml::Value::String("telegram".to_string());
+                if !arr.contains(&tg) {
+                    arr.push(tg);
+                }
+            }
+
+            // Set telegram config
+            let mut tg_table = toml::Table::new();
+            tg_table.insert(
+                "bot_token".to_string(),
+                toml::Value::String(bot_token.clone()),
+            );
+            tg_table.insert(
+                "chat_id".to_string(),
+                toml::Value::String(chat_id.clone()),
+            );
+            config.insert("telegram".to_string(), toml::Value::Table(tg_table));
+        }
+    }
+
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::write(&path, config.to_string())?;
+    println!("Config written to {}", path.display());
+
+    Ok(())
+}
+
+fn write_hooks(scope: &Scope) -> Result<(), Box<dyn std::error::Error>> {
+    let path = settings_path(scope);
 
     let mut settings: serde_json::Value = if path.exists() {
         let content = std::fs::read_to_string(&path)?;
@@ -23,8 +89,10 @@ pub fn run_setup() -> Result<(), Box<dyn std::error::Error>> {
         let hooks = obj.get("hooks").unwrap();
         let has_notify = hooks.to_string().contains("claude-notify");
         if has_notify {
-            println!("claude-notify hooks are already configured in {}", path.display());
-            println!("Remove the existing hooks first if you want to reconfigure.");
+            println!(
+                "claude-notify hooks already configured in {}",
+                path.display()
+            );
             return Ok(());
         }
     }
@@ -37,7 +105,6 @@ pub fn run_setup() -> Result<(), Box<dyn std::error::Error>> {
         .as_object_mut()
         .ok_or("hooks is not an object")?;
 
-    // Notification hook with matcher
     hooks_obj.insert(
         "Notification".to_string(),
         serde_json::json!([{
@@ -46,7 +113,6 @@ pub fn run_setup() -> Result<(), Box<dyn std::error::Error>> {
         }]),
     );
 
-    // Stop hook
     hooks_obj.insert(
         "Stop".to_string(),
         serde_json::json!([{
@@ -54,7 +120,6 @@ pub fn run_setup() -> Result<(), Box<dyn std::error::Error>> {
         }]),
     );
 
-    // TaskCompleted hook
     hooks_obj.insert(
         "TaskCompleted".to_string(),
         serde_json::json!([{
@@ -62,16 +127,29 @@ pub fn run_setup() -> Result<(), Box<dyn std::error::Error>> {
         }]),
     );
 
-    // Write back with pretty formatting
     let content = serde_json::to_string_pretty(&settings)?;
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }
     std::fs::write(&path, content)?;
-
     println!("Hooks configured in {}", path.display());
-    println!("\nMake sure claude-notify is in your PATH (e.g. ~/.local/bin/)");
-    println!("and that ~/.config/claude-notify/config.toml has your Telegram credentials.");
+
+    Ok(())
+}
+
+pub fn run_setup(
+    backend: &SetupBackend,
+    scope: Scope,
+) -> Result<(), Box<dyn std::error::Error>> {
+    write_backend_config(backend)?;
+    write_hooks(&scope)?;
+
+    let scope_label = match scope {
+        Scope::User => "user (~/.claude/settings.json)",
+        Scope::Project => "project (.claude/settings.json)",
+    };
+    println!("\nSetup complete ({}).", scope_label);
+    println!("Make sure claude-notify is in your PATH (e.g. ~/.local/bin/).");
 
     Ok(())
 }

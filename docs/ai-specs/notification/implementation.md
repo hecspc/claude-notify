@@ -9,7 +9,7 @@ Binary compiles to a 3.6 MB release binary. Installed to `~/.local/bin/claude-no
 ```
 Cargo.toml
 src/
-  main.rs              # CLI entry point: arg parsing, stdin → format → dispatch
+  main.rs              # CLI entry point: clap subcommands, stdin → format → dispatch
   types.rs             # HookEvent struct (serde deserialization)
   config.rs            # Config loading: TOML file + env var overrides
   formatter.rs         # Event → human-readable HTML message
@@ -17,7 +17,7 @@ src/
   notifiers/
     mod.rs             # Backend registry: config → Vec<Box<dyn Notifier>>
     telegram.rs        # Telegram Bot API implementation (ureq)
-  setup.rs             # --setup: auto-configure hooks in ~/.claude/settings.json
+  setup.rs             # setup subcommand: write backend config + hooks (--user or --project)
 ```
 
 ## Dependencies
@@ -379,86 +379,90 @@ Message format: `header + session_line + detail`. Each event type maps to an ico
 ### `src/setup.rs`
 
 ```rust
+use crate::SetupBackend;
 use std::path::PathBuf;
 
-fn settings_path() -> PathBuf {
-    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-    PathBuf::from(home).join(".claude").join("settings.json")
+pub enum Scope {
+    User,
+    Project,
 }
 
-pub fn run_setup() -> Result<(), Box<dyn std::error::Error>> {
-    let path = settings_path();
+fn settings_path(scope: &Scope) -> PathBuf {
+    match scope {
+        Scope::User => {
+            let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+            PathBuf::from(home).join(".claude").join("settings.json")
+        }
+        Scope::Project => PathBuf::from(".claude").join("settings.json"),
+    }
+}
 
-    let mut settings: serde_json::Value = if path.exists() {
+fn config_path() -> PathBuf {
+    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+    PathBuf::from(home)
+        .join(".config")
+        .join("claude-notify")
+        .join("config.toml")
+}
+
+fn write_backend_config(backend: &SetupBackend) -> Result<(), Box<dyn std::error::Error>> {
+    let path = config_path();
+
+    let mut config: toml::Table = if path.exists() {
         let content = std::fs::read_to_string(&path)?;
-        serde_json::from_str(&content)?
+        content.parse()?
     } else {
-        serde_json::json!({})
+        toml::Table::new()
     };
 
-    let obj = settings
-        .as_object_mut()
-        .ok_or("settings.json is not an object")?;
+    match backend {
+        SetupBackend::Telegram { bot_token, chat_id } => {
+            let backends = config
+                .entry("backends")
+                .or_insert(toml::Value::Array(vec![]));
+            if let toml::Value::Array(arr) = backends {
+                let tg = toml::Value::String("telegram".to_string());
+                if !arr.contains(&tg) {
+                    arr.push(tg);
+                }
+            }
 
-    if obj.contains_key("hooks") {
-        let hooks = obj.get("hooks").unwrap();
-        let has_notify = hooks.to_string().contains("claude-notify");
-        if has_notify {
-            println!("claude-notify hooks are already configured in {}", path.display());
-            println!("Remove the existing hooks first if you want to reconfigure.");
-            return Ok(());
+            let mut tg_table = toml::Table::new();
+            tg_table.insert("bot_token".to_string(), toml::Value::String(bot_token.clone()));
+            tg_table.insert("chat_id".to_string(), toml::Value::String(chat_id.clone()));
+            config.insert("telegram".to_string(), toml::Value::Table(tg_table));
         }
     }
 
-    let hooks = obj
-        .entry("hooks")
-        .or_insert_with(|| serde_json::json!({}));
-
-    let hooks_obj = hooks
-        .as_object_mut()
-        .ok_or("hooks is not an object")?;
-
-    // Notification hook with matcher
-    hooks_obj.insert(
-        "Notification".to_string(),
-        serde_json::json!([{
-            "matcher": "permission_prompt|idle_prompt|elicitation_dialog",
-            "hooks": [{ "type": "command", "command": "claude-notify", "async": true }]
-        }]),
-    );
-
-    // Stop hook
-    hooks_obj.insert(
-        "Stop".to_string(),
-        serde_json::json!([{
-            "hooks": [{ "type": "command", "command": "claude-notify", "async": true }]
-        }]),
-    );
-
-    // TaskCompleted hook
-    hooks_obj.insert(
-        "TaskCompleted".to_string(),
-        serde_json::json!([{
-            "hooks": [{ "type": "command", "command": "claude-notify", "async": true }]
-        }]),
-    );
-
-    // Write back with pretty formatting
-    let content = serde_json::to_string_pretty(&settings)?;
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    std::fs::write(&path, content)?;
+    std::fs::write(&path, config.to_string())?;
+    println!("Config written to {}", path.display());
 
-    println!("Hooks configured in {}", path.display());
-    println!("\nMake sure claude-notify is in your PATH (e.g. ~/.local/bin/)");
-    println!("and that ~/.config/claude-notify/config.toml has your Telegram credentials.");
+    Ok(())
+}
 
+fn write_hooks(scope: &Scope) -> Result<(), Box<dyn std::error::Error>> {
+    let path = settings_path(scope);
+    // ... reads existing settings.json, merges hook entries, writes back
+    // Detects if hooks already configured to avoid duplicates
+    Ok(())
+}
+
+pub fn run_setup(backend: &SetupBackend, scope: Scope) -> Result<(), Box<dyn std::error::Error>> {
+    write_backend_config(backend)?;
+    write_hooks(&scope)?;
+    // ...
     Ok(())
 }
 ```
 
-Reads existing `settings.json` (or starts from `{}`), merges hook config, writes back. Detects if hooks are already configured to avoid duplicates. All hooks use `"async": true` so they never block Claude Code.
+Setup does two things:
+1. **`write_backend_config()`** — writes `~/.config/claude-notify/config.toml` with backend credentials (always user-level)
+2. **`write_hooks()`** — merges hook entries into `settings.json` at the chosen scope (`--user` → `~/.claude/settings.json`, `--project` → `.claude/settings.json`)
+
+Detects if hooks are already configured to avoid duplicates. All hooks use `"async": true` so they never block Claude Code.
 
 ### `src/main.rs`
 
@@ -470,88 +474,80 @@ mod notifiers;
 mod setup;
 mod types;
 
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use std::io::Read;
 
 #[derive(Parser)]
 #[command(name = "claude-notify", version, about = "Notification bot for Claude Code hook events")]
 struct Cli {
-    /// Auto-configure hooks in ~/.claude/settings.json
-    #[arg(long)]
-    setup: bool,
+    #[command(subcommand)]
+    command: Option<Command>,
 
     /// Print formatted message to stdout without sending
     #[arg(long)]
     dry_run: bool,
 }
 
+#[derive(Subcommand)]
+enum Command {
+    /// Configure hooks and notification backend
+    Setup {
+        #[command(subcommand)]
+        backend: SetupBackend,
+
+        /// Install hooks in ~/.claude/settings.json (default)
+        #[arg(long, group = "scope")]
+        user: bool,
+
+        /// Install hooks in .claude/settings.json in current directory
+        #[arg(long, group = "scope")]
+        project: bool,
+    },
+}
+
+#[derive(Subcommand)]
+enum SetupBackend {
+    /// Configure Telegram notifications
+    Telegram {
+        /// Bot token from @BotFather
+        bot_token: String,
+        /// Chat ID from @userinfobot
+        chat_id: String,
+    },
+}
+
 fn main() {
     let cli = Cli::parse();
 
-    if cli.setup {
-        if let Err(e) = setup::run_setup() {
+    if let Some(Command::Setup { backend, user, project }) = cli.command {
+        let scope = if project {
+            setup::Scope::Project
+        } else {
+            setup::Scope::User
+        };
+
+        if let Err(e) = setup::run_setup(&backend, scope) {
             eprintln!("Setup failed: {}", e);
             std::process::exit(1);
         }
         return;
     }
 
-    // Read hook event JSON from stdin
-    let mut input = String::new();
-    if let Err(e) = std::io::stdin().read_to_string(&mut input) {
-        eprintln!("Failed to read stdin: {}", e);
-        std::process::exit(1);
-    }
-
-    let event: types::HookEvent = match serde_json::from_str(&input) {
-        Ok(e) => e,
-        Err(e) => {
-            eprintln!("Failed to parse hook event: {}", e);
-            std::process::exit(1);
-        }
-    };
-
-    let config = config::Config::load();
-
-    // Determine the event key for filtering
-    let event_key = match event.hook_event_name.as_str() {
-        "Notification" => event
-            .notification_type
-            .as_deref()
-            .unwrap_or("unknown")
-            .to_string(),
-        "Stop" => "stop".to_string(),
-        "TaskCompleted" => "task_completed".to_string(),
-        other => other.to_lowercase(),
-    };
-
-    if !config.should_notify(&event_key) {
-        return;
-    }
-
-    let message = formatter::format_message(&event);
-
-    if cli.dry_run {
-        println!("{}", message);
-        return;
-    }
-
-    let notifiers = notifiers::build_notifiers(&config);
-
-    if notifiers.is_empty() {
-        eprintln!("No notification backends configured. Run 'claude-notify --setup' or set environment variables.");
-        std::process::exit(1);
-    }
-
-    for n in &notifiers {
-        if let Err(e) = n.send(&message) {
-            eprintln!("Failed to send via {}: {}", n.name(), e);
-        }
-    }
+    // Normal mode: read hook JSON from stdin → format → send
+    // ... (unchanged from before)
 }
 ```
 
-Flow: parse CLI → route to `--setup` or stdin mode → read JSON → check event filter → format → send via all active backends. Errors go to stderr (invisible to Claude Code since hooks are async).
+CLI uses clap subcommands. `setup` is a subcommand with a nested backend subcommand and `--user`/`--project` scope flags. Normal mode (no subcommand) reads from stdin as before.
+
+Usage:
+```
+claude-notify setup telegram <BOT_TOKEN> <CHAT_ID>             # user-level (default)
+claude-notify setup telegram <BOT_TOKEN> <CHAT_ID> --project   # project-level
+claude-notify --dry-run                                        # test formatting
+```
+
+Flow: parse CLI → route to `setup` subcommand or stdin mode → read JSON → check event filter → format → send via all active backends. Errors go to stderr (invisible to Claude Code since hooks are async).
 
 ## Message Output Examples
 
@@ -636,7 +632,7 @@ Environment variables override config file values:
 ```bash
 cargo build --release
 cp target/release/claude-notify ~/.local/bin/
-claude-notify --setup
+claude-notify setup telegram <BOT_TOKEN> <CHAT_ID>
 ```
 
 ## Adding a New Backend
@@ -645,3 +641,5 @@ claude-notify --setup
 2. Add config struct fields to `Config` in `config.rs`
 3. Add match arm in `notifiers/mod.rs` `build_notifiers()`
 4. Add env var overrides in `config.rs` `apply_env_overrides()`
+5. Add a variant to `SetupBackend` enum in `main.rs` for `setup` subcommand support
+6. Add config writing logic in `setup.rs` `write_backend_config()`

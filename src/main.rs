@@ -5,26 +5,61 @@ mod notifiers;
 mod setup;
 mod types;
 
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use std::io::Read;
 
 #[derive(Parser)]
 #[command(name = "claude-notify", version, about = "Notification bot for Claude Code hook events")]
 struct Cli {
-    /// Auto-configure hooks in ~/.claude/settings.json
-    #[arg(long)]
-    setup: bool,
+    #[command(subcommand)]
+    command: Option<Command>,
 
     /// Print formatted message to stdout without sending
     #[arg(long)]
     dry_run: bool,
 }
 
+#[derive(Subcommand)]
+enum Command {
+    /// Configure hooks and notification backend
+    Setup {
+        #[command(subcommand)]
+        backend: SetupBackend,
+
+        /// Install hooks in ~/.claude/settings.json (default)
+        #[arg(long, group = "scope")]
+        user: bool,
+
+        /// Install hooks in .claude/settings.json in current directory
+        #[arg(long, group = "scope")]
+        project: bool,
+    },
+}
+
+#[derive(Subcommand)]
+enum SetupBackend {
+    /// Configure Telegram notifications
+    Telegram {
+        /// Bot token from @BotFather
+        bot_token: String,
+        /// Chat ID from @userinfobot
+        chat_id: String,
+    },
+}
+
 fn main() {
     let cli = Cli::parse();
 
-    if cli.setup {
-        if let Err(e) = setup::run_setup() {
+    if let Some(Command::Setup { backend, user, project }) = cli.command {
+        let scope = if project {
+            setup::Scope::Project
+        } else if user {
+            setup::Scope::User
+        } else {
+            setup::Scope::User
+        };
+
+        if let Err(e) = setup::run_setup(&backend, scope) {
             eprintln!("Setup failed: {}", e);
             std::process::exit(1);
         }
@@ -74,7 +109,7 @@ fn main() {
     let notifiers = notifiers::build_notifiers(&config);
 
     if notifiers.is_empty() {
-        eprintln!("No notification backends configured. Run 'claude-notify --setup' or set environment variables.");
+        eprintln!("No notification backends configured. Run 'claude-notify setup' or set environment variables.");
         std::process::exit(1);
     }
 
