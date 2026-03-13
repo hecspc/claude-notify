@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "rustfmt --edition 2024 $CLAUDE_FILE_PATH 2>/dev/null; exit 0"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_FILE_PATH\" | grep -qE '\\.(env|pem|key)$|config\\.toml$'; then echo 'BLOCKED: Sensitive file'; exit 2; fi"
+          }
+        ]
+      }
+    ]
+  }
+}
