@@ -137,11 +137,9 @@ fn cmd_unmute(session: Option<String>) {
         }
         None => {
             // Remove everything in the muted dir
-            if dir.exists() {
-                if let Ok(entries) = std::fs::read_dir(&dir) {
-                    for entry in entries.flatten() {
-                        std::fs::remove_file(entry.path()).ok();
-                    }
+            if let Ok(entries) = std::fs::read_dir(&dir) {
+                for entry in entries.flatten() {
+                    std::fs::remove_file(entry.path()).ok();
                 }
             }
             println!("All notifications unmuted.");
@@ -158,12 +156,10 @@ fn cmd_status() {
     }
 
     let mut muted_sessions = Vec::new();
-    if dir.exists() {
-        if let Ok(entries) = std::fs::read_dir(&dir) {
-            for entry in entries.flatten() {
-                if let Some(name) = entry.file_name().to_str() {
-                    muted_sessions.push(name.to_string());
-                }
+    if let Ok(entries) = std::fs::read_dir(&dir) {
+        for entry in entries.flatten() {
+            if let Some(name) = entry.file_name().to_str() {
+                muted_sessions.push(name.to_string());
             }
         }
     }
