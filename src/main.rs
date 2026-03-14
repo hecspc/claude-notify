@@ -85,6 +85,11 @@ pub enum SetupBackend {
         /// API token from Pushbullet settings
         api_token: String,
     },
+    /// Configure Microsoft Teams notifications via webhook
+    Teams {
+        /// Webhook URL from Teams Workflows connector
+        webhook_url: String,
+    },
     /// Configure generic webhook notifications
     Webhook {
         /// URL to POST JSON notifications to

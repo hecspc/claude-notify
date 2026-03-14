@@ -3,6 +3,7 @@ pub mod discord;
 pub mod ntfy;
 pub mod pushbullet;
 pub mod slack;
+pub mod teams;
 pub mod telegram;
 pub mod webhook;
 
@@ -65,6 +66,16 @@ pub fn build_notifiers(config: &Config) -> Vec<Box<dyn Notifier>> {
                     }
                 } else {
                     eprintln!("Warning: pushbullet backend enabled but not configured");
+                }
+            }
+            "teams" => {
+                if let Some(teams_config) = &config.teams {
+                    match teams::TeamsNotifier::new(teams_config) {
+                        Ok(n) => notifiers.push(Box::new(n)),
+                        Err(e) => eprintln!("Warning: failed to init teams: {}", e),
+                    }
+                } else {
+                    eprintln!("Warning: teams backend enabled but not configured");
                 }
             }
             "webhook" => {

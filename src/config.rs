@@ -18,6 +18,8 @@ pub struct Config {
     pub pushbullet: Option<PushbulletConfig>,
     #[serde(default)]
     pub webhook: Option<WebhookConfig>,
+    #[serde(default)]
+    pub teams: Option<TeamsConfig>,
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
@@ -49,6 +51,11 @@ pub struct PushbulletConfig {
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct WebhookConfig {
     pub url: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct TeamsConfig {
+    pub webhook_url: Option<String>,
 }
 
 impl Config {
@@ -117,6 +124,11 @@ impl Config {
         if let Ok(val) = std::env::var("WEBHOOK_URL") {
             let wh = self.webhook.get_or_insert_with(WebhookConfig::default);
             wh.url = Some(val);
+        }
+
+        if let Ok(val) = std::env::var("TEAMS_WEBHOOK_URL") {
+            let teams = self.teams.get_or_insert_with(TeamsConfig::default);
+            teams.webhook_url = Some(val);
         }
     }
 

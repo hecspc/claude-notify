@@ -145,6 +145,24 @@ fn write_backend_config(backend: &SetupBackend) -> Result<(), Box<dyn std::error
             );
             config.insert("pushbullet".to_string(), toml::Value::Table(pb_table));
         }
+        SetupBackend::Teams { webhook_url } => {
+            let backends = config
+                .entry("backends")
+                .or_insert(toml::Value::Array(vec![]));
+            if let toml::Value::Array(arr) = backends {
+                let teams = toml::Value::String("teams".to_string());
+                if !arr.contains(&teams) {
+                    arr.push(teams);
+                }
+            }
+
+            let mut teams_table = toml::Table::new();
+            teams_table.insert(
+                "webhook_url".to_string(),
+                toml::Value::String(webhook_url.clone()),
+            );
+            config.insert("teams".to_string(), toml::Value::Table(teams_table));
+        }
         SetupBackend::Webhook { url } => {
             let backends = config
                 .entry("backends")

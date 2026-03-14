@@ -5,8 +5,9 @@ All notable changes to claude-notify are documented here.
 ## [Unreleased]
 
 ### Added
+- Microsoft Teams notification backend via Workflows webhook (`claude-notify setup teams <WEBHOOK_URL>`)
 - Generic webhook notification backend (`claude-notify setup webhook <URL>`)
-- `WEBHOOK_URL` environment variable override
+- `TEAMS_WEBHOOK_URL`, `WEBHOOK_URL` environment variable overrides
 
 ## [1.1.0] - 2026-03-14
 

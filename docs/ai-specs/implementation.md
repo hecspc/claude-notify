@@ -23,6 +23,7 @@ src/
     discord.rs         # Discord webhook implementation (ureq), HTML→Discord markdown
     ntfy.rs            # ntfy implementation (ureq), plain text POST with Title header
     pushbullet.rs      # Pushbullet implementation (ureq), POST to v2/pushes with Access-Token
+    teams.rs           # Microsoft Teams (ureq), POST Adaptive Card to Workflows webhook
     webhook.rs         # Generic webhook (ureq), POST JSON {title, body, text} to any URL
   setup.rs             # setup subcommand: write backend config + hooks + skills (--user or --project)
 .github/
@@ -62,9 +63,9 @@ All fields except `session_id` and `hook_event_name` are `Option<T>` because dif
 
 Loading order: TOML file → env var overrides. If no backends specified, defaults to `["telegram"]`. Event filtering uses the `events` list — `None` means all events pass through.
 
-Structs: `Config` (backends, events, telegram, slack, discord, ntfy, pushbullet, webhook), `TelegramConfig` (bot_token, chat_id), `SlackConfig` (webhook_url), `DiscordConfig` (webhook_url), `NtfyConfig` (topic_url), `PushbulletConfig` (api_token), `WebhookConfig` (url).
+Structs: `Config` (backends, events, telegram, slack, discord, ntfy, pushbullet, webhook, teams), `TelegramConfig` (bot_token, chat_id), `SlackConfig` (webhook_url), `DiscordConfig` (webhook_url), `NtfyConfig` (topic_url), `PushbulletConfig` (api_token), `WebhookConfig` (url), `TeamsConfig` (webhook_url).
 
-Env var overrides: `NOTIFY_BACKEND`, `NOTIFY_EVENTS`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `SLACK_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL`, `NTFY_TOPIC_URL`, `PUSHBULLET_API_TOKEN`, `WEBHOOK_URL`.
+Env var overrides: `NOTIFY_BACKEND`, `NOTIFY_EVENTS`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `SLACK_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL`, `NTFY_TOPIC_URL`, `PUSHBULLET_API_TOKEN`, `TEAMS_WEBHOOK_URL`, `WEBHOOK_URL`.
 
 ### `src/notifier.rs`
 
@@ -93,6 +94,10 @@ Ntfy backend for self-hosted push notifications. `html_to_plain()` strips tags a
 ### `src/notifiers/pushbullet.rs`
 
 Pushbullet backend. `html_to_plain()` strips tags and unescapes entities. Splits message into title (first line) + body. POSTs `{"type": "note", "title": ..., "body": ...}` to `https://api.pushbullet.com/v2/pushes` with `Access-Token` header.
+
+### `src/notifiers/teams.rs`
+
+Microsoft Teams backend. Uses the Adaptive Card format required by Teams Workflows webhooks (legacy Office 365 connectors are deprecated). Converts `<b>` to `**` for bold. POSTs an Adaptive Card with a single TextBlock to the webhook URL.
 
 ### `src/notifiers/webhook.rs`
 
@@ -200,6 +205,7 @@ Claude Code Event
           → DiscordNotifier.send() → Discord Webhook API
           → NtfyNotifier.send() → ntfy topic URL
           → PushbulletNotifier.send() → Pushbullet API
+          → TeamsNotifier.send() → Teams Workflows webhook
           → WebhookNotifier.send() → any HTTP endpoint
 ```
 
@@ -239,6 +245,7 @@ Environment variables override config file values:
 | `DISCORD_WEBHOOK_URL` | `[discord].webhook_url` |
 | `NTFY_TOPIC_URL` | `[ntfy].topic_url` |
 | `PUSHBULLET_API_TOKEN` | `[pushbullet].api_token` |
+| `TEAMS_WEBHOOK_URL` | `[teams].webhook_url` |
 | `WEBHOOK_URL` | `[webhook].url` |
 
 ## Installation
