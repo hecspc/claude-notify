@@ -28,7 +28,7 @@ claude-notify use slack                # going AFK
 claude-notify use desktop,slack        # both
 ```
 
-This writes `~/.config/claude-notify/config.toml` with your credentials, adds hooks to `~/.claude/settings.json`, and installs Claude Code slash commands (`/mute`, `/unmute`, `/notify-use`, `/notify-session`).
+This writes `~/.config/claude-notify/config.toml` with your credentials, adds hooks to `~/.claude/settings.json`, and installs Claude Code slash commands (`/notify-mute`, `/notify-unmute`, `/notify-use`, `/notify-session`).
 
 ## Supported Events
 
@@ -95,8 +95,8 @@ Setup installs these slash commands into Claude Code:
 
 | Skill | Description |
 |---|---|
-| `/mute` | Mute all notifications, or pass a session name to mute one |
-| `/unmute` | Unmute all notifications, or pass a session name to unmute one |
+| `/notify-mute` | Mute all notifications, or pass a session name to mute one |
+| `/notify-unmute` | Unmute all notifications, or pass a session name to unmute one |
 | `/notify-use` | Switch active backends (e.g. `/notify-use desktop,slack`) |
 | `/notify-session` | Toggle mute for the current session (no args needed) |
 

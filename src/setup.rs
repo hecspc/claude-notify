@@ -219,9 +219,9 @@ fn write_skills(scope: &Scope) -> Result<(), Box<dyn std::error::Error>> {
 
     let skills: &[(&str, &str)] = &[
         (
-            "mute",
+            "notify-mute",
             r#"---
-name: mute
+name: notify-mute
 description: "Mute claude-notify notifications globally or for a specific session. Use with no args to mute all, or pass a session name/ID."
 ---
 
@@ -238,9 +238,9 @@ Run the command, then show the user the output.
 "#,
         ),
         (
-            "unmute",
+            "notify-unmute",
             r#"---
-name: unmute
+name: notify-unmute
 description: "Unmute claude-notify notifications globally or for a specific session. Use with no args to unmute all, or pass a session name/ID."
 ---
 
@@ -307,7 +307,7 @@ The current session ID is: ${CLAUDE_SESSION_ID}
         std::fs::write(&path, content)?;
     }
 
-    println!("Skills installed: /mute, /unmute, /notify-use, /notify-session");
+    println!("Skills installed: /notify-mute, /notify-unmute, /notify-use, /notify-session");
     Ok(())
 }
 

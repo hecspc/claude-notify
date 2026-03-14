@@ -91,7 +91,7 @@ Message format: `header + session_line + detail`. Each event type maps to an ico
 Setup does three things:
 1. **`write_backend_config()`** — writes `~/.config/claude-notify/config.toml` with backend credentials (always user-level)
 2. **`write_hooks()`** — merges hook entries into `settings.json` at the chosen scope (`--user` → `~/.claude/settings.json`, `--project` → `.claude/settings.json`)
-3. **`write_skills()`** — installs Claude Code slash commands (`/mute`, `/unmute`, `/notify-use`, `/notify-session`) as SKILL.md files
+3. **`write_skills()`** — installs Claude Code slash commands (`/notify-mute`, `/notify-unmute`, `/notify-use`, `/notify-session`) as SKILL.md files
 
 Detects if hooks are already configured to avoid duplicates. All hooks use `"async": true` so they never block Claude Code. The `/notify-session` skill uses `${CLAUDE_SESSION_ID}` substitution to target the active session.
 

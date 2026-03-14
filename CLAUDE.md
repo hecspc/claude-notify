@@ -53,7 +53,7 @@ src/
 - `~/.config/claude-notify/muted/` — mute state: `_global` file = all muted, session name/UUID files = per-session mute
 - `~/.claude/settings.json` — user-level hooks (`--user` scope, default)
 - `.claude/settings.json` — project-level hooks (`--project` scope)
-- `~/.claude/skills/{mute,unmute,notify-use,notify-session}/SKILL.md` — Claude Code slash commands installed by `setup`
+- `~/.claude/skills/{notify-mute,notify-unmute,notify-use,notify-session}/SKILL.md` — Claude Code slash commands installed by `setup`
 
 ## Key Conventions
 
