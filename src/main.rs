@@ -70,6 +70,19 @@ pub enum SetupBackend {
     },
     /// Configure desktop notifications (zero-config, uses native OS)
     Desktop,
+    /// Configure email notifications via SMTP
+    Email {
+        /// Sender email address
+        from: String,
+        /// Recipient email address
+        to: String,
+        /// SMTP server hostname
+        smtp_host: String,
+        /// SMTP username
+        smtp_username: String,
+        /// SMTP password
+        smtp_password: String,
+    },
     /// Configure Discord notifications via webhook
     Discord {
         /// Webhook URL from Discord channel settings

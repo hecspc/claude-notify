@@ -5,8 +5,10 @@ All notable changes to claude-notify are documented here.
 ## [Unreleased]
 
 ### Added
+- Email notification backend via SMTP with STARTTLS (`claude-notify setup email <FROM> <TO> <HOST> <USER> <PASS>`)
 - Microsoft Teams notification backend via Workflows webhook (`claude-notify setup teams <WEBHOOK_URL>`)
 - Generic webhook notification backend (`claude-notify setup webhook <URL>`)
+- `EMAIL_FROM`, `EMAIL_TO`, `EMAIL_SMTP_HOST`, `EMAIL_SMTP_PORT`, `EMAIL_SMTP_USERNAME`, `EMAIL_SMTP_PASSWORD` environment variable overrides
 - `TEAMS_WEBHOOK_URL`, `WEBHOOK_URL` environment variable overrides
 
 ## [1.1.0] - 2026-03-14

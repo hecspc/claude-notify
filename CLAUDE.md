@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-`claude-notify` is a Rust CLI that receives Claude Code hook events via stdin and dispatches notifications to configurable backends (Telegram, Slack, Desktop, Discord, ntfy, Pushbullet, Teams, Webhook). It compiles to a single native binary with no runtime dependencies.
+`claude-notify` is a Rust CLI that receives Claude Code hook events via stdin and dispatches notifications to configurable backends (Telegram, Slack, Desktop, Discord, ntfy, Pushbullet, Teams, Webhook, Email). It compiles to a single native binary with no runtime dependencies.
 
 Requires Rust edition 2024 (rustc 1.85+).
 
@@ -16,6 +16,7 @@ cargo run -- setup telegram <BOT_TOKEN> <CHAT_ID>               # configure cred
 cargo run -- setup telegram <BOT_TOKEN> <CHAT_ID> --project     # configure hooks in current project
 cargo run -- setup slack <WEBHOOK_URL>                          # configure Slack notifications
 cargo run -- setup desktop                                      # configure native OS notifications
+cargo run -- setup email <FROM> <TO> <SMTP_HOST> <USER> <PASS>  # configure email via SMTP
 cargo run -- setup discord <WEBHOOK_URL>                        # configure Discord notifications
 cargo run -- setup ntfy <TOPIC_URL>                             # configure ntfy notifications
 cargo run -- setup pushbullet <API_TOKEN>                       # configure Pushbullet notifications
@@ -46,6 +47,7 @@ src/
     slack.rs        — SlackNotifier: ureq POST to Slack Incoming Webhook, converts HTML→mrkdwn
     desktop.rs      — DesktopNotifier: osascript (macOS) / notify-send (Linux), zero-config
     discord.rs      — DiscordNotifier: ureq POST to Discord webhook, expects 204
+    email.rs        — EmailNotifier: lettre SMTP with STARTTLS (port 587)
     ntfy.rs         — NtfyNotifier: ureq POST plain text with Title header
     pushbullet.rs   — PushbulletNotifier: ureq POST to Pushbullet API with Access-Token header
     teams.rs        — TeamsNotifier: ureq POST Adaptive Card to Teams Workflows webhook

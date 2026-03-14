@@ -1,5 +1,6 @@
 pub mod desktop;
 pub mod discord;
+pub mod email;
 pub mod ntfy;
 pub mod pushbullet;
 pub mod slack;
@@ -46,6 +47,16 @@ pub fn build_notifiers(config: &Config) -> Vec<Box<dyn Notifier>> {
                     }
                 } else {
                     eprintln!("Warning: discord backend enabled but not configured");
+                }
+            }
+            "email" => {
+                if let Some(email_config) = &config.email {
+                    match email::EmailNotifier::new(email_config) {
+                        Ok(n) => notifiers.push(Box::new(n)),
+                        Err(e) => eprintln!("Warning: failed to init email: {}", e),
+                    }
+                } else {
+                    eprintln!("Warning: email backend enabled but not configured");
                 }
             }
             "ntfy" => {

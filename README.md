@@ -1,6 +1,6 @@
 # claude-notify
 
-Notification bot for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) hook events. Get notifications via Desktop, Telegram, Slack, Discord, ntfy, Pushbullet, Teams, or Webhook when Claude needs your input — permission prompts, questions, idle sessions, or task completions.
+Notification bot for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) hook events. Get notifications via Desktop, Telegram, Slack, Discord, ntfy, Pushbullet, Teams, Webhook, or Email when Claude needs your input — permission prompts, questions, idle sessions, or task completions.
 
 Built in Rust for a single native binary with no runtime dependencies.
 
@@ -36,6 +36,7 @@ claude-notify setup desktop                                           # zero-con
 claude-notify setup telegram YOUR_BOT_TOKEN YOUR_CHAT_ID              # Telegram
 claude-notify setup slack https://hooks.slack.com/services/T.../B.../xxx  # Slack
 claude-notify setup discord https://discord.com/api/webhooks/123/abc  # Discord
+claude-notify setup email me@x.com me@x.com smtp.x.com user pass     # Email (SMTP)
 claude-notify setup ntfy https://ntfy.sh/my-claude-topic              # ntfy
 claude-notify setup pushbullet YOUR_API_TOKEN                         # Pushbullet
 claude-notify setup teams https://xxx.webhook.office.com/...          # Microsoft Teams
@@ -95,6 +96,7 @@ claude-notify setup telegram <BOT_TOKEN> <CHAT_ID>             # Configure crede
 claude-notify setup telegram <BOT_TOKEN> <CHAT_ID> --project   # Configure hooks in current project
 claude-notify setup slack <WEBHOOK_URL>                        # Configure Slack notifications
 claude-notify setup desktop                                    # Configure desktop notifications (zero-config)
+claude-notify setup email <FROM> <TO> <HOST> <USER> <PASS>     # Configure email via SMTP
 claude-notify setup discord <WEBHOOK_URL>                      # Configure Discord notifications
 claude-notify setup ntfy <TOPIC_URL>                           # Configure ntfy notifications
 claude-notify setup pushbullet <API_TOKEN>                     # Configure Pushbullet notifications
@@ -164,6 +166,14 @@ webhook_url = "https://hooks.slack.com/services/T.../B.../xxx"
 [discord]
 webhook_url = "https://discord.com/api/webhooks/123/abc"
 
+[email]
+from = "claude-notify@example.com"
+to = "you@example.com"
+smtp_host = "smtp.example.com"
+smtp_port = 587
+smtp_username = "user"
+smtp_password = "password"
+
 [ntfy]
 topic_url = "https://ntfy.sh/my-claude-topic"
 
@@ -189,6 +199,12 @@ Env vars override config file values.
 | `TELEGRAM_CHAT_ID` | User's chat ID | `123456789` |
 | `SLACK_WEBHOOK_URL` | Slack Incoming Webhook URL | `https://hooks.slack.com/services/...` |
 | `DISCORD_WEBHOOK_URL` | Discord webhook URL | `https://discord.com/api/webhooks/...` |
+| `EMAIL_FROM` | Sender email address | `claude-notify@example.com` |
+| `EMAIL_TO` | Recipient email address | `you@example.com` |
+| `EMAIL_SMTP_HOST` | SMTP server hostname | `smtp.example.com` |
+| `EMAIL_SMTP_PORT` | SMTP port (default 587) | `587` |
+| `EMAIL_SMTP_USERNAME` | SMTP username | `user` |
+| `EMAIL_SMTP_PASSWORD` | SMTP password | `password` |
 | `NTFY_TOPIC_URL` | ntfy topic URL | `https://ntfy.sh/my-topic` |
 | `PUSHBULLET_API_TOKEN` | Pushbullet API token | `o.xxxxxxxxxxxxxxxxxxxxx` |
 | `TEAMS_WEBHOOK_URL` | Teams webhook URL | `https://xxx.webhook.office.com/...` |
@@ -223,6 +239,16 @@ No configuration needed — just run `claude-notify setup desktop`. Uses `osascr
 1. In Teams, create an Incoming Webhook via Workflows (Power Automate) — the legacy Office 365 connectors are deprecated
 2. Copy the webhook URL
 3. Run `claude-notify setup teams <WEBHOOK_URL>`
+
+## Email Setup
+
+Configure SMTP credentials for email notifications. Uses STARTTLS on port 587 by default.
+
+```bash
+claude-notify setup email sender@example.com recipient@example.com smtp.example.com username password
+```
+
+For Gmail, use an [App Password](https://support.google.com/accounts/answer/185833) with `smtp.gmail.com`.
 
 ## Webhook Setup
 
@@ -278,7 +304,7 @@ All hooks use `async: true` so they never block Claude Code.
 ## Architecture
 
 ```
-Claude Code Event → Hook (async) → claude-notify → Notifier trait → Desktop / Telegram / Slack / Discord / Ntfy / Pushbullet / Teams / Webhook
+Claude Code Event → Hook (async) → claude-notify → Notifier trait → Desktop / Telegram / Slack / Discord / Ntfy / Pushbullet / Teams / Webhook / Email
 ```
 
 The notification backend is abstracted behind a `Notifier` trait. Adding new backends requires implementing a single trait:

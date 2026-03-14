@@ -21,6 +21,7 @@ src/
     slack.rs           # Slack Incoming Webhook implementation (ureq), HTML→mrkdwn conversion
     desktop.rs         # Native OS notifications: osascript (macOS) / notify-send (Linux)
     discord.rs         # Discord webhook implementation (ureq), HTML→Discord markdown
+    email.rs           # Email via SMTP with STARTTLS (lettre), plain text
     ntfy.rs            # ntfy implementation (ureq), plain text POST with Title header
     pushbullet.rs      # Pushbullet implementation (ureq), POST to v2/pushes with Access-Token
     teams.rs           # Microsoft Teams (ureq), POST Adaptive Card to Workflows webhook
@@ -63,9 +64,9 @@ All fields except `session_id` and `hook_event_name` are `Option<T>` because dif
 
 Loading order: TOML file → env var overrides. If no backends specified, defaults to `["telegram"]`. Event filtering uses the `events` list — `None` means all events pass through.
 
-Structs: `Config` (backends, events, telegram, slack, discord, ntfy, pushbullet, webhook, teams), `TelegramConfig` (bot_token, chat_id), `SlackConfig` (webhook_url), `DiscordConfig` (webhook_url), `NtfyConfig` (topic_url), `PushbulletConfig` (api_token), `WebhookConfig` (url), `TeamsConfig` (webhook_url).
+Structs: `Config` (backends, events, telegram, slack, discord, ntfy, pushbullet, webhook, teams, email), `TelegramConfig` (bot_token, chat_id), `SlackConfig` (webhook_url), `DiscordConfig` (webhook_url), `NtfyConfig` (topic_url), `PushbulletConfig` (api_token), `WebhookConfig` (url), `TeamsConfig` (webhook_url), `EmailConfig` (from, to, smtp_host, smtp_port, smtp_username, smtp_password).
 
-Env var overrides: `NOTIFY_BACKEND`, `NOTIFY_EVENTS`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `SLACK_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL`, `NTFY_TOPIC_URL`, `PUSHBULLET_API_TOKEN`, `TEAMS_WEBHOOK_URL`, `WEBHOOK_URL`.
+Env var overrides: `NOTIFY_BACKEND`, `NOTIFY_EVENTS`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `SLACK_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL`, `NTFY_TOPIC_URL`, `PUSHBULLET_API_TOKEN`, `TEAMS_WEBHOOK_URL`, `WEBHOOK_URL`, `EMAIL_FROM`, `EMAIL_TO`, `EMAIL_SMTP_HOST`, `EMAIL_SMTP_PORT`, `EMAIL_SMTP_USERNAME`, `EMAIL_SMTP_PASSWORD`.
 
 ### `src/notifier.rs`
 
@@ -86,6 +87,10 @@ Zero-config backend. `html_to_plain()` strips HTML tags and unescapes entities. 
 ### `src/notifiers/discord.rs`
 
 Discord webhook backend. `html_to_discord()` converts `<b>` to `**` (Discord bold) and unescapes entities. POSTs `{"content": text}` to the webhook URL. Success is 204 (not 200).
+
+### `src/notifiers/email.rs`
+
+Email backend using `lettre` crate. Sends plain text emails via SMTP with STARTTLS on port 587. First line of message becomes the subject, rest becomes the body. Requires from, to, smtp_host, smtp_username, smtp_password config.
 
 ### `src/notifiers/ntfy.rs`
 
@@ -203,6 +208,7 @@ Claude Code Event
           → TelegramNotifier.send() → Telegram Bot API
           → SlackNotifier.send() → Slack Incoming Webhook
           → DiscordNotifier.send() → Discord Webhook API
+          → EmailNotifier.send() → SMTP server
           → NtfyNotifier.send() → ntfy topic URL
           → PushbulletNotifier.send() → Pushbullet API
           → TeamsNotifier.send() → Teams Workflows webhook
@@ -243,6 +249,12 @@ Environment variables override config file values:
 | `TELEGRAM_CHAT_ID` | `[telegram].chat_id` |
 | `SLACK_WEBHOOK_URL` | `[slack].webhook_url` |
 | `DISCORD_WEBHOOK_URL` | `[discord].webhook_url` |
+| `EMAIL_FROM` | `[email].from` |
+| `EMAIL_TO` | `[email].to` |
+| `EMAIL_SMTP_HOST` | `[email].smtp_host` |
+| `EMAIL_SMTP_PORT` | `[email].smtp_port` |
+| `EMAIL_SMTP_USERNAME` | `[email].smtp_username` |
+| `EMAIL_SMTP_PASSWORD` | `[email].smtp_password` |
 | `NTFY_TOPIC_URL` | `[ntfy].topic_url` |
 | `PUSHBULLET_API_TOKEN` | `[pushbullet].api_token` |
 | `TEAMS_WEBHOOK_URL` | `[teams].webhook_url` |

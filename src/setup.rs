@@ -91,6 +91,26 @@ fn write_backend_config(backend: &SetupBackend) -> Result<(), Box<dyn std::error
                 }
             }
         }
+        SetupBackend::Email { from, to, smtp_host, smtp_username, smtp_password } => {
+            let backends = config
+                .entry("backends")
+                .or_insert(toml::Value::Array(vec![]));
+            if let toml::Value::Array(arr) = backends {
+                let email = toml::Value::String("email".to_string());
+                if !arr.contains(&email) {
+                    arr.push(email);
+                }
+            }
+
+            let mut email_table = toml::Table::new();
+            email_table.insert("from".to_string(), toml::Value::String(from.clone()));
+            email_table.insert("to".to_string(), toml::Value::String(to.clone()));
+            email_table.insert("smtp_host".to_string(), toml::Value::String(smtp_host.clone()));
+            email_table.insert("smtp_port".to_string(), toml::Value::Integer(587));
+            email_table.insert("smtp_username".to_string(), toml::Value::String(smtp_username.clone()));
+            email_table.insert("smtp_password".to_string(), toml::Value::String(smtp_password.clone()));
+            config.insert("email".to_string(), toml::Value::Table(email_table));
+        }
         SetupBackend::Discord { webhook_url } => {
             let backends = config
                 .entry("backends")

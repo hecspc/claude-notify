@@ -20,6 +20,8 @@ pub struct Config {
     pub webhook: Option<WebhookConfig>,
     #[serde(default)]
     pub teams: Option<TeamsConfig>,
+    #[serde(default)]
+    pub email: Option<EmailConfig>,
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
@@ -56,6 +58,16 @@ pub struct WebhookConfig {
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct TeamsConfig {
     pub webhook_url: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct EmailConfig {
+    pub from: Option<String>,
+    pub to: Option<String>,
+    pub smtp_host: Option<String>,
+    pub smtp_port: Option<u16>,
+    pub smtp_username: Option<String>,
+    pub smtp_password: Option<String>,
 }
 
 impl Config {
@@ -129,6 +141,29 @@ impl Config {
         if let Ok(val) = std::env::var("TEAMS_WEBHOOK_URL") {
             let teams = self.teams.get_or_insert_with(TeamsConfig::default);
             teams.webhook_url = Some(val);
+        }
+
+        let has_email_env = std::env::var("EMAIL_SMTP_HOST").is_ok();
+        if has_email_env {
+            let email = self.email.get_or_insert_with(EmailConfig::default);
+            if let Ok(val) = std::env::var("EMAIL_FROM") {
+                email.from = Some(val);
+            }
+            if let Ok(val) = std::env::var("EMAIL_TO") {
+                email.to = Some(val);
+            }
+            if let Ok(val) = std::env::var("EMAIL_SMTP_HOST") {
+                email.smtp_host = Some(val);
+            }
+            if let Ok(val) = std::env::var("EMAIL_SMTP_PORT") {
+                email.smtp_port = val.parse().ok();
+            }
+            if let Ok(val) = std::env::var("EMAIL_SMTP_USERNAME") {
+                email.smtp_username = Some(val);
+            }
+            if let Ok(val) = std::env::var("EMAIL_SMTP_PASSWORD") {
+                email.smtp_password = Some(val);
+            }
         }
     }
 
