@@ -4,6 +4,12 @@ All notable changes to claude-notify are documented here.
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-03-14
+
+### Fixed
+- Fix clippy collapsible_if warnings for CI compatibility
+- Fix release workflow: replace deprecated macos-13 with macos-latest for x86_64 cross-compilation
+
 ## [1.0.0] - 2026-03-14
 
 ## [0.1.1] - 2026-03-14
