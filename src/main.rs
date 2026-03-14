@@ -80,6 +80,11 @@ pub enum SetupBackend {
         /// Topic URL (e.g. https://ntfy.sh/my-topic)
         topic_url: String,
     },
+    /// Configure Pushbullet notifications
+    Pushbullet {
+        /// API token from Pushbullet settings
+        api_token: String,
+    },
 }
 
 fn mute_dir() -> PathBuf {

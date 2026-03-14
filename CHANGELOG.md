@@ -4,6 +4,10 @@ All notable changes to claude-notify are documented here.
 
 ## [Unreleased]
 
+### Added
+- Pushbullet notification backend (`claude-notify setup pushbullet <API_TOKEN>`)
+- `PUSHBULLET_API_TOKEN` environment variable override
+
 ## [1.0.1] - 2026-03-14
 
 ### Fixed

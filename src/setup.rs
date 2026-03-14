@@ -127,6 +127,24 @@ fn write_backend_config(backend: &SetupBackend) -> Result<(), Box<dyn std::error
             );
             config.insert("ntfy".to_string(), toml::Value::Table(ntfy_table));
         }
+        SetupBackend::Pushbullet { api_token } => {
+            let backends = config
+                .entry("backends")
+                .or_insert(toml::Value::Array(vec![]));
+            if let toml::Value::Array(arr) = backends {
+                let pb = toml::Value::String("pushbullet".to_string());
+                if !arr.contains(&pb) {
+                    arr.push(pb);
+                }
+            }
+
+            let mut pb_table = toml::Table::new();
+            pb_table.insert(
+                "api_token".to_string(),
+                toml::Value::String(api_token.clone()),
+            );
+            config.insert("pushbullet".to_string(), toml::Value::Table(pb_table));
+        }
     }
 
     if let Some(parent) = path.parent() {

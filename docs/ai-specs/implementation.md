@@ -22,6 +22,7 @@ src/
     desktop.rs         # Native OS notifications: osascript (macOS) / notify-send (Linux)
     discord.rs         # Discord webhook implementation (ureq), HTML→Discord markdown
     ntfy.rs            # ntfy implementation (ureq), plain text POST with Title header
+    pushbullet.rs      # Pushbullet implementation (ureq), POST to v2/pushes with Access-Token
   setup.rs             # setup subcommand: write backend config + hooks + skills (--user or --project)
 .github/
   workflows/
@@ -60,9 +61,9 @@ All fields except `session_id` and `hook_event_name` are `Option<T>` because dif
 
 Loading order: TOML file → env var overrides. If no backends specified, defaults to `["telegram"]`. Event filtering uses the `events` list — `None` means all events pass through.
 
-Structs: `Config` (backends, events, telegram, slack, discord, ntfy), `TelegramConfig` (bot_token, chat_id), `SlackConfig` (webhook_url), `DiscordConfig` (webhook_url), `NtfyConfig` (topic_url).
+Structs: `Config` (backends, events, telegram, slack, discord, ntfy, pushbullet), `TelegramConfig` (bot_token, chat_id), `SlackConfig` (webhook_url), `DiscordConfig` (webhook_url), `NtfyConfig` (topic_url), `PushbulletConfig` (api_token).
 
-Env var overrides: `NOTIFY_BACKEND`, `NOTIFY_EVENTS`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `SLACK_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL`, `NTFY_TOPIC_URL`.
+Env var overrides: `NOTIFY_BACKEND`, `NOTIFY_EVENTS`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `SLACK_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL`, `NTFY_TOPIC_URL`, `PUSHBULLET_API_TOKEN`.
 
 ### `src/notifier.rs`
 
@@ -87,6 +88,10 @@ Discord webhook backend. `html_to_discord()` converts `<b>` to `**` (Discord bol
 ### `src/notifiers/ntfy.rs`
 
 Ntfy backend for self-hosted push notifications. `html_to_plain()` strips tags and unescapes entities. POSTs plain text body with `Title` header to the topic URL.
+
+### `src/notifiers/pushbullet.rs`
+
+Pushbullet backend. `html_to_plain()` strips tags and unescapes entities. Splits message into title (first line) + body. POSTs `{"type": "note", "title": ..., "body": ...}` to `https://api.pushbullet.com/v2/pushes` with `Access-Token` header.
 
 ### `src/notifiers/mod.rs`
 
@@ -189,6 +194,7 @@ Claude Code Event
           → SlackNotifier.send() → Slack Incoming Webhook
           → DiscordNotifier.send() → Discord Webhook API
           → NtfyNotifier.send() → ntfy topic URL
+          → PushbulletNotifier.send() → Pushbullet API
 ```
 
 ## Configuration
@@ -226,6 +232,7 @@ Environment variables override config file values:
 | `SLACK_WEBHOOK_URL` | `[slack].webhook_url` |
 | `DISCORD_WEBHOOK_URL` | `[discord].webhook_url` |
 | `NTFY_TOPIC_URL` | `[ntfy].topic_url` |
+| `PUSHBULLET_API_TOKEN` | `[pushbullet].api_token` |
 
 ## Installation
 

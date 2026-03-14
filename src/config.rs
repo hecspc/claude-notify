@@ -14,6 +14,8 @@ pub struct Config {
     pub discord: Option<DiscordConfig>,
     #[serde(default)]
     pub ntfy: Option<NtfyConfig>,
+    #[serde(default)]
+    pub pushbullet: Option<PushbulletConfig>,
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
@@ -35,6 +37,11 @@ pub struct DiscordConfig {
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct NtfyConfig {
     pub topic_url: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct PushbulletConfig {
+    pub api_token: Option<String>,
 }
 
 impl Config {
@@ -93,6 +100,11 @@ impl Config {
         if let Ok(val) = std::env::var("NTFY_TOPIC_URL") {
             let ntfy = self.ntfy.get_or_insert_with(NtfyConfig::default);
             ntfy.topic_url = Some(val);
+        }
+
+        if let Ok(val) = std::env::var("PUSHBULLET_API_TOKEN") {
+            let pb = self.pushbullet.get_or_insert_with(PushbulletConfig::default);
+            pb.api_token = Some(val);
         }
     }
 

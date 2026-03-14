@@ -1,6 +1,7 @@
 pub mod desktop;
 pub mod discord;
 pub mod ntfy;
+pub mod pushbullet;
 pub mod slack;
 pub mod telegram;
 
@@ -53,6 +54,16 @@ pub fn build_notifiers(config: &Config) -> Vec<Box<dyn Notifier>> {
                     }
                 } else {
                     eprintln!("Warning: ntfy backend enabled but not configured");
+                }
+            }
+            "pushbullet" => {
+                if let Some(pb_config) = &config.pushbullet {
+                    match pushbullet::PushbulletNotifier::new(pb_config) {
+                        Ok(n) => notifiers.push(Box::new(n)),
+                        Err(e) => eprintln!("Warning: failed to init pushbullet: {}", e),
+                    }
+                } else {
+                    eprintln!("Warning: pushbullet backend enabled but not configured");
                 }
             }
             other => {
