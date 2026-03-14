@@ -6,7 +6,13 @@ All notable changes to claude-notify are documented here.
 
 ### Added
 - Slack notification backend via Incoming Webhooks (`claude-notify setup slack <WEBHOOK_URL>`)
-- `SLACK_WEBHOOK_URL` environment variable override
+- Desktop notification backend — zero-config, uses native OS (`osascript` on macOS, `notify-send` on Linux)
+- Discord notification backend via webhooks (`claude-notify setup discord <WEBHOOK_URL>`)
+- Ntfy notification backend for self-hosted push (`claude-notify setup ntfy <TOPIC_URL>`)
+- `use` command to switch active backends without editing config (`claude-notify use desktop,slack`)
+- Claude Code slash commands installed by `setup`: `/mute`, `/unmute`, `/notify-use`, `/notify-session`
+- `/notify-session` skill uses `${CLAUDE_SESSION_ID}` to toggle mute for the current session
+- `SLACK_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL`, `NTFY_TOPIC_URL` environment variable overrides
 - HTML-to-mrkdwn conversion for Slack message formatting
 
 ## [0.1.0] - 2026-03-14

@@ -44,7 +44,7 @@ src/
     desktop.rs      — DesktopNotifier: osascript (macOS) / notify-send (Linux), zero-config
     discord.rs      — DiscordNotifier: ureq POST to Discord webhook, expects 204
     ntfy.rs         — NtfyNotifier: ureq POST plain text with Title header
-  setup.rs          — run_setup() writes backend config + merges hooks into settings.json (--user or --project scope)
+  setup.rs          — run_setup() writes backend config + hooks + skills (--user or --project scope)
 ```
 
 ## Runtime File Paths
@@ -53,6 +53,7 @@ src/
 - `~/.config/claude-notify/muted/` — mute state: `_global` file = all muted, session name/UUID files = per-session mute
 - `~/.claude/settings.json` — user-level hooks (`--user` scope, default)
 - `.claude/settings.json` — project-level hooks (`--project` scope)
+- `~/.claude/skills/{mute,unmute,notify-use,notify-session}/SKILL.md` — Claude Code slash commands installed by `setup`
 
 ## Key Conventions
 

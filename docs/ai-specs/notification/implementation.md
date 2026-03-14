@@ -9,7 +9,7 @@ Binary compiles to a 3.6 MB release binary. Installed to `~/.local/bin/claude-no
 ```
 Cargo.toml
 src/
-  main.rs              # CLI entry point: clap subcommands, stdin → format → dispatch
+  main.rs              # CLI entry point: clap subcommands, stdin → format → dispatch, cmd_use()
   types.rs             # HookEvent struct (serde deserialization)
   config.rs            # Config loading: TOML file + env var overrides
   formatter.rs         # Event → human-readable HTML message
@@ -18,7 +18,10 @@ src/
     mod.rs             # Backend registry: config → Vec<Box<dyn Notifier>>
     telegram.rs        # Telegram Bot API implementation (ureq)
     slack.rs           # Slack Incoming Webhook implementation (ureq), HTML→mrkdwn conversion
-  setup.rs             # setup subcommand: write backend config + hooks (--user or --project)
+    desktop.rs         # Native OS notifications: osascript (macOS) / notify-send (Linux)
+    discord.rs         # Discord webhook implementation (ureq), HTML→Discord markdown
+    ntfy.rs            # ntfy implementation (ureq), plain text POST with Title header
+  setup.rs             # setup subcommand: write backend config + hooks + skills (--user or --project)
 ```
 
 ## Dependencies
@@ -47,9 +50,9 @@ All fields except `session_id` and `hook_event_name` are `Option<T>` because dif
 
 Loading order: TOML file → env var overrides. If no backends specified, defaults to `["telegram"]`. Event filtering uses the `events` list — `None` means all events pass through.
 
-Structs: `Config` (backends, events, telegram, slack), `TelegramConfig` (bot_token, chat_id), `SlackConfig` (webhook_url).
+Structs: `Config` (backends, events, telegram, slack, discord, ntfy), `TelegramConfig` (bot_token, chat_id), `SlackConfig` (webhook_url), `DiscordConfig` (webhook_url), `NtfyConfig` (topic_url).
 
-Env var overrides: `NOTIFY_BACKEND`, `NOTIFY_EVENTS`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `SLACK_WEBHOOK_URL`.
+Env var overrides: `NOTIFY_BACKEND`, `NOTIFY_EVENTS`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `SLACK_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL`, `NTFY_TOPIC_URL`.
 
 ### `src/notifier.rs`
 
@@ -63,9 +66,21 @@ Uses HTML parse mode (only need to escape `< > &`). `disable_web_page_preview` p
 
 Uses Slack Incoming Webhooks — simplest integration, no OAuth needed. `html_to_mrkdwn()` converts the HTML-formatted message (designed for Telegram) to Slack's mrkdwn format: `<b>`→`*` for bold, and unescapes HTML entities (`&amp;`, `&lt;`, `&gt;`). POSTs `{"text": ...}` to the webhook URL.
 
+### `src/notifiers/desktop.rs`
+
+Zero-config backend. `html_to_plain()` strips HTML tags and unescapes entities. Splits message into title (first line) + body, then dispatches via `osascript` on macOS or `notify-send` on Linux.
+
+### `src/notifiers/discord.rs`
+
+Discord webhook backend. `html_to_discord()` converts `<b>` to `**` (Discord bold) and unescapes entities. POSTs `{"content": text}` to the webhook URL. Success is 204 (not 200).
+
+### `src/notifiers/ntfy.rs`
+
+Ntfy backend for self-hosted push notifications. `html_to_plain()` strips tags and unescapes entities. POSTs plain text body with `Title` header to the topic URL.
+
 ### `src/notifiers/mod.rs`
 
-Registry pattern: reads `config.backends` and constructs the corresponding `Notifier` implementations. Adding a new backend means adding a match arm and a new module.
+Registry pattern: reads `config.backends` and constructs the corresponding `Notifier` implementations. Adding a new backend means adding a match arm and a new module. Desktop requires no config check.
 
 ### `src/formatter.rs`
 
@@ -73,25 +88,33 @@ Message format: `header + session_line + detail`. Each event type maps to an ico
 
 ### `src/setup.rs`
 
-Setup does two things:
+Setup does three things:
 1. **`write_backend_config()`** — writes `~/.config/claude-notify/config.toml` with backend credentials (always user-level)
 2. **`write_hooks()`** — merges hook entries into `settings.json` at the chosen scope (`--user` → `~/.claude/settings.json`, `--project` → `.claude/settings.json`)
+3. **`write_skills()`** — installs Claude Code slash commands (`/mute`, `/unmute`, `/notify-use`, `/notify-session`) as SKILL.md files
 
-Detects if hooks are already configured to avoid duplicates. All hooks use `"async": true` so they never block Claude Code.
+Detects if hooks are already configured to avoid duplicates. All hooks use `"async": true` so they never block Claude Code. The `/notify-session` skill uses `${CLAUDE_SESSION_ID}` substitution to target the active session.
 
 ### `src/main.rs`
 
-CLI uses clap subcommands. `setup` is a subcommand with a nested backend subcommand (`Telegram`, `Slack`) and `--user`/`--project` scope flags. Also has `mute`, `unmute`, `status` subcommands. Normal mode (no subcommand) reads from stdin as before.
+CLI uses clap subcommands. `setup` is a subcommand with a nested backend subcommand (`Telegram`, `Slack`, `Desktop`, `Discord`, `Ntfy`) and `--user`/`--project` scope flags. Also has `mute`, `unmute`, `status`, `use` subcommands. Normal mode (no subcommand) reads from stdin as before.
 
 Usage:
 ```
 claude-notify setup telegram <BOT_TOKEN> <CHAT_ID>             # user-level (default)
 claude-notify setup telegram <BOT_TOKEN> <CHAT_ID> --project   # project-level
 claude-notify setup slack <WEBHOOK_URL>                        # Slack notifications
+claude-notify setup desktop                                    # Desktop notifications (zero-config)
+claude-notify setup discord <WEBHOOK_URL>                      # Discord notifications
+claude-notify setup ntfy <TOPIC_URL>                           # ntfy notifications
+claude-notify use desktop                                      # Switch active backend(s)
+claude-notify use desktop,slack                                # Multiple backends
 claude-notify --dry-run                                        # test formatting
 ```
 
-Flow: parse CLI → route to `setup` subcommand or stdin mode → read JSON → check mute status → check event filter → format → send via all active backends. Errors go to stderr (invisible to Claude Code since hooks are async).
+`cmd_use()` loads config.toml, replaces the `backends` array, and writes it back — no other config is touched.
+
+Flow: parse CLI → route to `setup`/`use`/`mute`/`unmute`/`status` subcommand or stdin mode → read JSON → check mute status → check event filter → format → send via all active backends. Errors go to stderr (invisible to Claude Code since hooks are async).
 
 ## Message Output Examples
 
@@ -151,8 +174,11 @@ Claude Code Event
         → check event filter (config.should_notify)
         → format message (formatter.rs)
         → dispatch to backends (notifiers/mod.rs)
+          → DesktopNotifier.send() → osascript / notify-send
           → TelegramNotifier.send() → Telegram Bot API
           → SlackNotifier.send() → Slack Incoming Webhook
+          → DiscordNotifier.send() → Discord Webhook API
+          → NtfyNotifier.send() → ntfy topic URL
 ```
 
 ## Configuration
@@ -160,7 +186,7 @@ Claude Code Event
 Config file: `~/.config/claude-notify/config.toml`
 
 ```toml
-backends = ["telegram"]  # or ["slack"], or ["telegram", "slack"] for both
+backends = ["desktop"]  # or ["telegram"], ["slack"], ["desktop", "slack"], etc.
 
 # Optional: filter which events trigger notifications
 # events = ["permission_prompt", "idle_prompt", "elicitation_dialog", "stop", "task_completed"]
@@ -171,6 +197,12 @@ chat_id = "123456789"
 
 [slack]
 webhook_url = "https://hooks.slack.com/services/T.../B.../xxx"
+
+[discord]
+webhook_url = "https://discord.com/api/webhooks/123/abc"
+
+[ntfy]
+topic_url = "https://ntfy.sh/my-claude-topic"
 ```
 
 Environment variables override config file values:
@@ -182,15 +214,19 @@ Environment variables override config file values:
 | `TELEGRAM_BOT_TOKEN` | `[telegram].bot_token` |
 | `TELEGRAM_CHAT_ID` | `[telegram].chat_id` |
 | `SLACK_WEBHOOK_URL` | `[slack].webhook_url` |
+| `DISCORD_WEBHOOK_URL` | `[discord].webhook_url` |
+| `NTFY_TOPIC_URL` | `[ntfy].topic_url` |
 
 ## Installation
 
 ```bash
 cargo build --release
 cp target/release/claude-notify ~/.local/bin/
-claude-notify setup telegram <BOT_TOKEN> <CHAT_ID>
-# Or for Slack:
-claude-notify setup slack <WEBHOOK_URL>
+claude-notify setup desktop                                    # zero-config
+claude-notify setup telegram <BOT_TOKEN> <CHAT_ID>             # Telegram
+claude-notify setup slack <WEBHOOK_URL>                        # Slack
+claude-notify setup discord <WEBHOOK_URL>                      # Discord
+claude-notify setup ntfy <TOPIC_URL>                           # ntfy
 ```
 
 ## Adding a New Backend

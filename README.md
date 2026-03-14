@@ -1,12 +1,12 @@
 # claude-notify
 
-Notification bot for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) hook events. Get Telegram or Slack notifications when Claude needs your input — permission prompts, questions, idle sessions, or task completions.
+Notification bot for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) hook events. Get notifications via Desktop, Telegram, Slack, Discord, or ntfy when Claude needs your input — permission prompts, questions, idle sessions, or task completions.
 
 Built in Rust for a single native binary with no runtime dependencies.
 
 ## Why
 
-When running Claude Code sessions (especially long-running or parallel ones), sessions sit idle waiting for attention. `claude-notify` sends notifications to Telegram or Slack so you can monitor from mobile or another screen.
+When running Claude Code sessions (especially long-running or parallel ones), sessions sit idle waiting for attention. `claude-notify` sends notifications so you can monitor from mobile or another screen — and quickly switch between backends depending on where you are.
 
 ## Quick Start
 
@@ -15,13 +15,20 @@ When running Claude Code sessions (especially long-running or parallel ones), se
 cargo build --release
 cp target/release/claude-notify ~/.local/bin/
 
-# One-command setup: configures credentials + hooks
-claude-notify setup telegram YOUR_BOT_TOKEN YOUR_CHAT_ID
-# Or for Slack:
-claude-notify setup slack https://hooks.slack.com/services/T.../B.../xxx
+# One-command setup: configures credentials + hooks + Claude Code skills
+claude-notify setup desktop                                           # zero-config native OS notifications
+claude-notify setup telegram YOUR_BOT_TOKEN YOUR_CHAT_ID              # Telegram
+claude-notify setup slack https://hooks.slack.com/services/T.../B.../xxx  # Slack
+claude-notify setup discord https://discord.com/api/webhooks/123/abc  # Discord
+claude-notify setup ntfy https://ntfy.sh/my-claude-topic              # ntfy
+
+# Switch backends on the fly
+claude-notify use desktop              # at my desk
+claude-notify use slack                # going AFK
+claude-notify use desktop,slack        # both
 ```
 
-This writes `~/.config/claude-notify/config.toml` with your credentials and adds hooks to `~/.claude/settings.json`.
+This writes `~/.config/claude-notify/config.toml` with your credentials, adds hooks to `~/.claude/settings.json`, and installs Claude Code slash commands (`/mute`, `/unmute`, `/notify-use`, `/notify-session`).
 
 ## Supported Events
 
@@ -68,6 +75,11 @@ claude-notify                                                  # Normal: read ho
 claude-notify setup telegram <BOT_TOKEN> <CHAT_ID>             # Configure credentials + hooks (user-level)
 claude-notify setup telegram <BOT_TOKEN> <CHAT_ID> --project   # Configure hooks in current project
 claude-notify setup slack <WEBHOOK_URL>                        # Configure Slack notifications
+claude-notify setup desktop                                    # Configure desktop notifications (zero-config)
+claude-notify setup discord <WEBHOOK_URL>                      # Configure Discord notifications
+claude-notify setup ntfy <TOPIC_URL>                           # Configure ntfy notifications
+claude-notify use desktop                                      # Switch active backend(s)
+claude-notify use desktop,slack                                # Multiple backends
 claude-notify mute                                             # Mute all notifications
 claude-notify mute safe-seal                                   # Mute a specific session (friendly name or UUID)
 claude-notify unmute                                           # Unmute all
@@ -76,6 +88,17 @@ claude-notify status                                           # Show mute statu
 claude-notify --dry-run                                        # Print formatted message to stdout, don't send
 claude-notify --version                                        # Print version
 ```
+
+### Claude Code Skills
+
+Setup installs these slash commands into Claude Code:
+
+| Skill | Description |
+|---|---|
+| `/mute` | Mute all notifications, or pass a session name to mute one |
+| `/unmute` | Unmute all notifications, or pass a session name to unmute one |
+| `/notify-use` | Switch active backends (e.g. `/notify-use desktop,slack`) |
+| `/notify-session` | Toggle mute for the current session (no args needed) |
 
 ### Muting
 
@@ -104,7 +127,7 @@ Both scopes write backend credentials to `~/.config/claude-notify/config.toml`.
 `~/.config/claude-notify/config.toml`:
 
 ```toml
-backends = ["telegram"]  # or ["slack"], or ["telegram", "slack"] for both
+backends = ["desktop"]  # or ["telegram"], ["slack"], ["desktop", "slack"], etc.
 
 # Optional: filter which events trigger notifications (defaults to all)
 # events = ["permission_prompt", "idle_prompt", "elicitation_dialog", "stop", "task_completed"]
@@ -115,6 +138,12 @@ chat_id = "123456789"
 
 [slack]
 webhook_url = "https://hooks.slack.com/services/T.../B.../xxx"
+
+[discord]
+webhook_url = "https://discord.com/api/webhooks/123/abc"
+
+[ntfy]
+topic_url = "https://ntfy.sh/my-claude-topic"
 ```
 
 ### Environment Variables
@@ -123,11 +152,13 @@ Env vars override config file values.
 
 | Variable | Purpose | Example |
 |---|---|---|
-| `NOTIFY_BACKEND` | Active backend(s), comma-separated | `telegram`, `slack`, `telegram,slack` |
+| `NOTIFY_BACKEND` | Active backend(s), comma-separated | `desktop`, `slack,discord` |
 | `NOTIFY_EVENTS` | Event filter, comma-separated | `permission_prompt,idle_prompt` |
 | `TELEGRAM_BOT_TOKEN` | Token from @BotFather | `123456:ABC-DEF...` |
 | `TELEGRAM_CHAT_ID` | User's chat ID | `123456789` |
 | `SLACK_WEBHOOK_URL` | Slack Incoming Webhook URL | `https://hooks.slack.com/services/...` |
+| `DISCORD_WEBHOOK_URL` | Discord webhook URL | `https://discord.com/api/webhooks/...` |
+| `NTFY_TOPIC_URL` | ntfy topic URL | `https://ntfy.sh/my-topic` |
 
 ### Event Filtering
 
@@ -136,6 +167,22 @@ To silence noisy events like "Response Complete":
 ```toml
 events = ["permission_prompt", "idle_prompt", "elicitation_dialog", "task_completed"]
 ```
+
+## Desktop Setup
+
+No configuration needed — just run `claude-notify setup desktop`. Uses `osascript` on macOS and `notify-send` on Linux.
+
+## Discord Setup
+
+1. In your Discord server, go to a channel's settings → Integrations → Webhooks
+2. Create a new webhook and copy the URL
+3. Run `claude-notify setup discord <WEBHOOK_URL>`
+
+## Ntfy Setup
+
+1. Pick a topic name at [ntfy.sh](https://ntfy.sh) (or use your own ntfy server)
+2. Subscribe to the topic on your phone via the ntfy app
+3. Run `claude-notify setup ntfy https://ntfy.sh/my-claude-topic`
 
 ## Slack Setup
 
@@ -176,10 +223,10 @@ All hooks use `async: true` so they never block Claude Code.
 ## Architecture
 
 ```
-Claude Code Event → Hook (async) → claude-notify → Notifier trait → Telegram / Slack
+Claude Code Event → Hook (async) → claude-notify → Notifier trait → Desktop / Telegram / Slack / Discord / Ntfy
 ```
 
-The notification backend is abstracted behind a `Notifier` trait. Adding new backends (WhatsApp, Discord, etc.) requires implementing a single trait:
+The notification backend is abstracted behind a `Notifier` trait. Adding new backends requires implementing a single trait:
 
 ```rust
 pub trait Notifier {
