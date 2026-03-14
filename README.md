@@ -8,13 +8,29 @@ Built in Rust for a single native binary with no runtime dependencies.
 
 When running Claude Code sessions (especially long-running or parallel ones), sessions sit idle waiting for attention. `claude-notify` sends notifications so you can monitor from mobile or another screen — and quickly switch between backends depending on where you are.
 
+## Install
+
+```bash
+# Install latest version
+curl -sSL https://raw.githubusercontent.com/hecspc/claude-notify/main/install.sh | sh
+
+# Install a specific version
+curl -sSL https://raw.githubusercontent.com/hecspc/claude-notify/main/install.sh | sh -s 1.0.1
+
+# Custom install directory (default: ~/.bin)
+curl -sSL https://raw.githubusercontent.com/hecspc/claude-notify/main/install.sh | INSTALL_DIR=/usr/local/bin sh
+```
+
+Or build from source:
+
+```bash
+cargo build --release
+cp target/release/claude-notify ~/.bin/
+```
+
 ## Quick Start
 
 ```bash
-# Build and install
-cargo build --release
-cp target/release/claude-notify ~/.bin/
-
 # One-command setup: configures credentials + hooks + Claude Code skills
 claude-notify setup desktop                                           # zero-config native OS notifications
 claude-notify setup telegram YOUR_BOT_TOKEN YOUR_CHAT_ID              # Telegram
