@@ -103,10 +103,12 @@ pub enum SetupBackend {
         /// Webhook URL from Teams Workflows connector
         webhook_url: String,
     },
-    /// Configure generic webhook notifications
+    /// Configure generic webhook notifications (use NAME for named instances, e.g. "ha-appletv")
     Webhook {
-        /// URL to POST JSON notifications to
-        url: String,
+        /// Instance name or URL. If it looks like a URL, creates unnamed webhook. Otherwise creates named instance.
+        name_or_url: String,
+        /// URL to POST JSON notifications to (required for named instances)
+        url: Option<String>,
     },
 }
 

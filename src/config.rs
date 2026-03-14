@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 #[derive(Debug, Deserialize, Default)]
@@ -17,7 +18,7 @@ pub struct Config {
     #[serde(default)]
     pub pushbullet: Option<PushbulletConfig>,
     #[serde(default)]
-    pub webhook: Option<WebhookConfig>,
+    pub webhook: Option<WebhookInstanceConfig>,
     #[serde(default)]
     pub teams: Option<TeamsConfig>,
     #[serde(default)]
@@ -50,9 +51,26 @@ pub struct PushbulletConfig {
     pub api_token: Option<String>,
 }
 
+/// Supports both a single webhook and named instances.
+/// Single: `[webhook]` with `url` field
+/// Named: `[webhook.name]` with `url` and optional `headers`
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct WebhookInstanceConfig {
+    /// URL for the unnamed/default webhook
+    pub url: Option<String>,
+    /// Optional headers for the unnamed/default webhook
+    #[serde(default)]
+    pub headers: Option<HashMap<String, String>>,
+    /// Named webhook instances (e.g. [webhook.ha-appletv])
+    #[serde(flatten)]
+    pub instances: HashMap<String, WebhookConfig>,
+}
+
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct WebhookConfig {
     pub url: Option<String>,
+    #[serde(default)]
+    pub headers: Option<HashMap<String, String>>,
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
@@ -134,7 +152,7 @@ impl Config {
         }
 
         if let Ok(val) = std::env::var("WEBHOOK_URL") {
-            let wh = self.webhook.get_or_insert_with(WebhookConfig::default);
+            let wh = self.webhook.get_or_insert_with(WebhookInstanceConfig::default);
             wh.url = Some(val);
         }
 

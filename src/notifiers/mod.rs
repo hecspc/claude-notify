@@ -91,12 +91,31 @@ pub fn build_notifiers(config: &Config) -> Vec<Box<dyn Notifier>> {
             }
             "webhook" => {
                 if let Some(wh_config) = &config.webhook {
-                    match webhook::WebhookNotifier::new(wh_config) {
+                    let compat = crate::config::WebhookConfig {
+                        url: wh_config.url.clone(),
+                        headers: wh_config.headers.clone(),
+                    };
+                    match webhook::WebhookNotifier::new(&compat, "webhook") {
                         Ok(n) => notifiers.push(Box::new(n)),
                         Err(e) => eprintln!("Warning: failed to init webhook: {}", e),
                     }
                 } else {
                     eprintln!("Warning: webhook backend enabled but not configured");
+                }
+            }
+            other if other.starts_with("webhook.") => {
+                let instance_name = &other["webhook.".len()..];
+                if let Some(wh_config) = &config.webhook {
+                    if let Some(instance) = wh_config.instances.get(instance_name) {
+                        match webhook::WebhookNotifier::new(instance, other) {
+                            Ok(n) => notifiers.push(Box::new(n)),
+                            Err(e) => eprintln!("Warning: failed to init {}: {}", other, e),
+                        }
+                    } else {
+                        eprintln!("Warning: webhook instance '{}' not configured", instance_name);
+                    }
+                } else {
+                    eprintln!("Warning: {} enabled but [webhook] section not configured", other);
                 }
             }
             other => {

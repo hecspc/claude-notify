@@ -183,23 +183,51 @@ fn write_backend_config(backend: &SetupBackend) -> Result<(), Box<dyn std::error
             );
             config.insert("teams".to_string(), toml::Value::Table(teams_table));
         }
-        SetupBackend::Webhook { url } => {
-            let backends = config
-                .entry("backends")
-                .or_insert(toml::Value::Array(vec![]));
-            if let toml::Value::Array(arr) = backends {
-                let wh = toml::Value::String("webhook".to_string());
-                if !arr.contains(&wh) {
-                    arr.push(wh);
+        SetupBackend::Webhook { name_or_url, url } => {
+            let is_url = name_or_url.starts_with("http://") || name_or_url.starts_with("https://");
+
+            if is_url {
+                // Unnamed webhook: claude-notify setup webhook <URL>
+                let backends = config
+                    .entry("backends")
+                    .or_insert(toml::Value::Array(vec![]));
+                if let toml::Value::Array(arr) = backends {
+                    let wh = toml::Value::String("webhook".to_string());
+                    if !arr.contains(&wh) {
+                        arr.push(wh);
+                    }
+                }
+
+                let wh_table = config
+                    .entry("webhook")
+                    .or_insert(toml::Value::Table(toml::Table::new()));
+                if let toml::Value::Table(t) = wh_table {
+                    t.insert("url".to_string(), toml::Value::String(name_or_url.clone()));
+                }
+            } else {
+                // Named webhook: claude-notify setup webhook <NAME> <URL>
+                let actual_url = url.clone().ok_or("URL is required for named webhook instances")?;
+                let backend_name = format!("webhook.{}", name_or_url);
+
+                let backends = config
+                    .entry("backends")
+                    .or_insert(toml::Value::Array(vec![]));
+                if let toml::Value::Array(arr) = backends {
+                    let wh = toml::Value::String(backend_name.clone());
+                    if !arr.contains(&wh) {
+                        arr.push(wh);
+                    }
+                }
+
+                let wh_table = config
+                    .entry("webhook")
+                    .or_insert(toml::Value::Table(toml::Table::new()));
+                if let toml::Value::Table(t) = wh_table {
+                    let mut instance = toml::Table::new();
+                    instance.insert("url".to_string(), toml::Value::String(actual_url));
+                    t.insert(name_or_url.clone(), toml::Value::Table(instance));
                 }
             }
-
-            let mut wh_table = toml::Table::new();
-            wh_table.insert(
-                "url".to_string(),
-                toml::Value::String(url.clone()),
-            );
-            config.insert("webhook".to_string(), toml::Value::Table(wh_table));
         }
     }
 

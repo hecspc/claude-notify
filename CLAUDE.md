@@ -21,7 +21,8 @@ cargo run -- setup discord <WEBHOOK_URL>                        # configure Disc
 cargo run -- setup ntfy <TOPIC_URL>                             # configure ntfy notifications
 cargo run -- setup pushbullet <API_TOKEN>                       # configure Pushbullet notifications
 cargo run -- setup teams <WEBHOOK_URL>                          # configure Microsoft Teams notifications
-cargo run -- setup webhook <URL>                                # configure generic webhook
+cargo run -- setup webhook <URL>                                # configure generic webhook (unnamed)
+cargo run -- setup webhook <NAME> <URL>                        # configure named webhook instance
 cargo run -- use desktop                                        # switch active backend(s)
 cargo run -- use desktop,slack                                  # multiple backends
 ```
@@ -51,7 +52,7 @@ src/
     ntfy.rs         — NtfyNotifier: ureq POST plain text with Title header
     pushbullet.rs   — PushbulletNotifier: ureq POST to Pushbullet API with Access-Token header
     teams.rs        — TeamsNotifier: ureq POST Adaptive Card to Teams Workflows webhook
-    webhook.rs      — WebhookNotifier: ureq POST JSON {title, body, text} to any URL
+    webhook.rs      — WebhookNotifier: ureq POST JSON {title, body, text} to any URL. Supports named instances and custom headers
   setup.rs          — run_setup() writes backend config + hooks + skills (--user or --project scope)
 .github/
   workflows/

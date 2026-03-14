@@ -41,6 +41,7 @@ claude-notify setup ntfy https://ntfy.sh/my-claude-topic              # ntfy
 claude-notify setup pushbullet YOUR_API_TOKEN                         # Pushbullet
 claude-notify setup teams https://xxx.webhook.office.com/...          # Microsoft Teams
 claude-notify setup webhook https://example.com/notify                # generic webhook
+claude-notify setup webhook ha-appletv http://ha:8123/api/webhook/x   # named webhook instance
 
 # Switch backends on the fly
 claude-notify use desktop              # at my desk
@@ -101,7 +102,8 @@ claude-notify setup discord <WEBHOOK_URL>                      # Configure Disco
 claude-notify setup ntfy <TOPIC_URL>                           # Configure ntfy notifications
 claude-notify setup pushbullet <API_TOKEN>                     # Configure Pushbullet notifications
 claude-notify setup teams <WEBHOOK_URL>                        # Configure Microsoft Teams notifications
-claude-notify setup webhook <URL>                              # Configure generic webhook
+claude-notify setup webhook <URL>                              # Configure generic webhook (unnamed)
+claude-notify setup webhook <NAME> <URL>                      # Configure named webhook instance
 claude-notify use desktop                                      # Switch active backend(s)
 claude-notify use desktop,slack                                # Multiple backends
 claude-notify mute                                             # Mute all notifications
@@ -184,7 +186,15 @@ api_token = "o.xxxxxxxxxxxxxxxxxxxxx"
 webhook_url = "https://xxx.webhook.office.com/webhookb2/..."
 
 [webhook]
-url = "https://example.com/notify"
+url = "https://example.com/notify"                    # unnamed webhook
+
+[webhook.ha-appletv]                                  # named instance
+url = "http://homeassistant:8123/api/webhook/claude-notify"
+
+[webhook.ha-direct]                                   # named instance with auth headers
+url = "http://homeassistant:8123/api/services/notify/apple_tv"
+[webhook.ha-direct.headers]
+Authorization = "Bearer YOUR_HA_LONG_LIVED_TOKEN"
 ```
 
 ### Environment Variables
@@ -258,7 +268,24 @@ Point notifications at any HTTP endpoint. The webhook receives a POST with JSON:
 {"title": "🔔 Permission Required", "body": "Session: safe-seal ...", "text": "full plain text"}
 ```
 
-Run `claude-notify setup webhook <URL>`. Any 2xx response is treated as success.
+**Unnamed (single):** `claude-notify setup webhook <URL>`
+
+**Named instances:** `claude-notify setup webhook <NAME> <URL>` — use `webhook.<name>` in backends:
+
+```bash
+claude-notify setup webhook ha-appletv http://homeassistant:8123/api/webhook/claude-notify
+claude-notify setup webhook zapier https://hooks.zapier.com/hooks/catch/123/abc
+claude-notify use webhook.ha-appletv,webhook.zapier   # use both
+```
+
+**Custom headers** (e.g. auth tokens) can be added manually to config.toml:
+
+```toml
+[webhook.ha-direct.headers]
+Authorization = "Bearer YOUR_TOKEN"
+```
+
+Any 2xx response is treated as success.
 
 ## Pushbullet Setup
 

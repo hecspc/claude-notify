@@ -4,6 +4,13 @@ All notable changes to claude-notify are documented here.
 
 ## [Unreleased]
 
+### Added
+- Named webhook instances (`webhook.name`) for multiple webhook targets
+- Custom headers support for webhooks (auth tokens, etc.)
+
+### Changed
+- `claude-notify setup webhook` now supports `<NAME> <URL>` for named instances
+
 ## [1.1.2] - 2026-03-14
 
 ### Added
