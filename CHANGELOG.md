@@ -4,6 +4,8 @@ All notable changes to claude-notify are documented here.
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-03-14
+
 ### Added
 - Windows desktop notifications via PowerShell toast (Windows.UI.Notifications)
 - Windows x86_64 release binary and CI support
