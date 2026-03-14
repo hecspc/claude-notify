@@ -4,6 +4,8 @@ All notable changes to claude-notify are documented here.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-03-14
+
 ## [0.1.1] - 2026-03-14
 
 ### Added
