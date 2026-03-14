@@ -204,12 +204,120 @@ fn write_hooks(scope: &Scope) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+fn skills_dir(scope: &Scope) -> PathBuf {
+    match scope {
+        Scope::User => {
+            let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+            PathBuf::from(home).join(".claude").join("skills")
+        }
+        Scope::Project => PathBuf::from(".claude").join("skills"),
+    }
+}
+
+fn write_skills(scope: &Scope) -> Result<(), Box<dyn std::error::Error>> {
+    let base = skills_dir(scope);
+
+    let skills: &[(&str, &str)] = &[
+        (
+            "mute",
+            r#"---
+name: mute
+description: "Mute claude-notify notifications globally or for a specific session. Use with no args to mute all, or pass a session name/ID."
+---
+
+# Mute Notifications
+
+Run `claude-notify mute` to silence notifications.
+
+## Usage
+
+- **Mute all**: `claude-notify mute`
+- **Mute a session**: `claude-notify mute <session-name-or-id>` (use the friendly name like "bold-cat" or the session UUID)
+
+Run the command, then show the user the output.
+"#,
+        ),
+        (
+            "unmute",
+            r#"---
+name: unmute
+description: "Unmute claude-notify notifications globally or for a specific session. Use with no args to unmute all, or pass a session name/ID."
+---
+
+# Unmute Notifications
+
+Run `claude-notify unmute` to re-enable notifications.
+
+## Usage
+
+- **Unmute all**: `claude-notify unmute`
+- **Unmute a session**: `claude-notify unmute <session-name-or-id>`
+
+Run the command, then show the user the output.
+"#,
+        ),
+        (
+            "notify-use",
+            r#"---
+name: notify-use
+description: "Switch active claude-notify backends (e.g. desktop, slack, discord, ntfy, telegram). Pass comma-separated backend names."
+---
+
+# Switch Notification Backends
+
+Run `claude-notify use <backends>` to switch which notification backends are active.
+
+## Usage
+
+The user provides one or more backend names (comma-separated). Valid backends: `desktop`, `telegram`, `slack`, `discord`, `ntfy`.
+
+Examples:
+- `claude-notify use desktop` — desktop only
+- `claude-notify use slack,discord` — Slack and Discord
+- `claude-notify use desktop,telegram` — desktop and Telegram
+
+Run the command with the user's chosen backend(s), then show the output.
+"#,
+        ),
+        (
+            "notify-session",
+            r#"---
+name: notify-session
+description: "Toggle mute for the current Claude Code session's notifications. Mutes this session if active, unmutes if already muted."
+---
+
+# Toggle Notifications for This Session
+
+The current session ID is: ${CLAUDE_SESSION_ID}
+
+## Steps
+
+1. Run `claude-notify status` to check if this session is currently muted.
+2. If the session is muted, run: `claude-notify unmute ${CLAUDE_SESSION_ID}`
+3. If the session is not muted, run: `claude-notify mute ${CLAUDE_SESSION_ID}`
+4. Show the user the result.
+"#,
+        ),
+    ];
+
+    for (name, content) in skills {
+        let dir = base.join(name);
+        std::fs::create_dir_all(&dir)?;
+        let path = dir.join("SKILL.md");
+        std::fs::write(&path, content)?;
+    }
+
+    println!("Skills installed: /mute, /unmute, /notify-use, /notify-session");
+    Ok(())
+}
+
 pub fn run_setup(
     backend: &SetupBackend,
     scope: Scope,
 ) -> Result<(), Box<dyn std::error::Error>> {
     write_backend_config(backend)?;
     write_hooks(&scope)?;
+    write_skills(&scope)?;
 
     let scope_label = match scope {
         Scope::User => "user (~/.claude/settings.json)",
