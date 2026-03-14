@@ -8,6 +8,7 @@ Binary compiles to a 3.6 MB release binary. Installed to `~/.bin/claude-notify`.
 
 ```
 Cargo.toml
+LICENSE
 src/
   main.rs              # CLI entry point: clap subcommands, stdin → format → dispatch, cmd_use()
   types.rs             # HookEvent struct (serde deserialization)
@@ -22,6 +23,15 @@ src/
     discord.rs         # Discord webhook implementation (ureq), HTML→Discord markdown
     ntfy.rs            # ntfy implementation (ureq), plain text POST with Title header
   setup.rs             # setup subcommand: write backend config + hooks + skills (--user or --project)
+.github/
+  workflows/
+    ci.yml             # Build + clippy on Ubuntu and macOS for PRs and pushes to main
+    release.yml        # Detects version change, builds release binaries, creates tag + GitHub release
+.claude/
+  skills/
+    release/SKILL.md   # /release: bump version, update changelog, commit, push
+    dry-run/SKILL.md   # /dry-run: test notification formatting
+    add-backend/SKILL.md # /add-backend: scaffold a new backend
 ```
 
 ## Dependencies
@@ -228,6 +238,46 @@ claude-notify setup slack <WEBHOOK_URL>                        # Slack
 claude-notify setup discord <WEBHOOK_URL>                      # Discord
 claude-notify setup ntfy <TOPIC_URL>                           # ntfy
 ```
+
+## CI/CD
+
+### CI (`ci.yml`)
+
+Runs on every PR and push to main. Matrix build on Ubuntu and macOS:
+- `cargo build` — verify compilation
+- `cargo clippy -- -D warnings` — lint with all warnings as errors
+
+### Release (`release.yml`)
+
+Triggered by pushes to main that modify `Cargo.toml`. Only proceeds if the `version` field actually changed (compares current vs previous commit).
+
+Steps:
+1. **check-version** — extracts version, compares with previous commit
+2. **build** — matrix build for 3 targets: `x86_64-unknown-linux-gnu`, `aarch64-apple-darwin`, `x86_64-apple-darwin`
+3. **release** — extracts changelog section, creates/pushes git tag (`vX.Y.Z`), creates GitHub release with binaries and changelog as description
+
+### `/release` Project Skill
+
+The `/release` skill automates version bumps:
+1. Reads current version from `Cargo.toml`
+2. Bumps based on argument (`patch`, `minor`, `major`, or explicit version)
+3. Updates `Cargo.toml` version
+4. Renames `[Unreleased]` in `CHANGELOG.md` to `[X.Y.Z] - YYYY-MM-DD`, adds new empty `[Unreleased]`
+5. Runs `cargo build` to verify
+6. Commits and pushes to both `origin` and `upstream`
+
+## Claude Code Skills (installed by setup)
+
+`setup` installs these slash commands into `~/.claude/skills/` (or `.claude/skills/` with `--project`):
+
+| Skill | File | Description |
+|---|---|---|
+| `/notify-mute` | `notify-mute/SKILL.md` | Runs `claude-notify mute [session]` |
+| `/notify-unmute` | `notify-unmute/SKILL.md` | Runs `claude-notify unmute [session]` |
+| `/notify-use` | `notify-use/SKILL.md` | Runs `claude-notify use <backends>` |
+| `/notify-session` | `notify-session/SKILL.md` | Toggles mute for current session using `${CLAUDE_SESSION_ID}` |
+
+The `/notify-session` skill uses Claude Code's `${CLAUDE_SESSION_ID}` string substitution to automatically target the active session without user input.
 
 ## Adding a New Backend
 

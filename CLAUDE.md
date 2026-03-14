@@ -22,7 +22,7 @@ cargo run -- use desktop                                        # switch active 
 cargo run -- use desktop,slack                                  # multiple backends
 ```
 
-There are no tests yet. Verify changes with `cargo build` and manual dry-run testing:
+There are no tests yet. CI runs `cargo clippy -- -D warnings` on Ubuntu and macOS. Verify changes locally with:
 
 ```bash
 echo '{"session_id":"abc","cwd":"/tmp","hook_event_name":"Notification","notification_type":"permission_prompt","tool_name":"Bash","tool_input":{"command":"ls"}}' | cargo run -- --dry-run
@@ -45,6 +45,15 @@ src/
     discord.rs      — DiscordNotifier: ureq POST to Discord webhook, expects 204
     ntfy.rs         — NtfyNotifier: ureq POST plain text with Title header
   setup.rs          — run_setup() writes backend config + hooks + skills (--user or --project scope)
+.github/
+  workflows/
+    ci.yml          — Build + clippy on Ubuntu and macOS for PRs and pushes to main
+    release.yml     — Detects version change in Cargo.toml, builds binaries, creates tag + GitHub release
+.claude/
+  skills/
+    release/        — /release skill: bump version, update changelog, commit, push
+    dry-run/        — /dry-run skill: test notification formatting
+    add-backend/    — /add-backend skill: scaffold a new backend
 ```
 
 ## Runtime File Paths

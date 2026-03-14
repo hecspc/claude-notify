@@ -25,7 +25,7 @@ All hooks run with `async: true` so they never block Claude Code.
 ## Architecture
 
 ```
-Claude Code Event → Hook (async) → claude-notify (binary) → Notifier trait → Telegram / Slack / ...
+Claude Code Event → Hook (async) → claude-notify (binary) → Notifier trait → Desktop / Telegram / Slack / Discord / Ntfy
 ```
 
 The hook invokes a native binary directly — no runtime needed on the target machine. The notification backend is abstracted behind a `Notifier` trait so new channels can be added without changing the core logic.
@@ -36,6 +36,16 @@ pub trait Notifier {
     fn name(&self) -> &str;
 }
 ```
+
+### Notification Backends
+
+| Backend | Config Required | Transport | Success Status |
+|---|---|---|---|
+| Desktop | None (zero-config) | `osascript` (macOS) / `notify-send` (Linux) | exit code 0 |
+| Telegram | `bot_token`, `chat_id` | ureq POST to Bot API | 200 |
+| Slack | `webhook_url` | ureq POST to Incoming Webhook | 200 |
+| Discord | `webhook_url` | ureq POST `{"content": text}` | 204 |
+| Ntfy | `topic_url` | ureq POST plain text with `Title` header | 200 |
 
 ### Configuration
 
@@ -54,25 +64,31 @@ chat_id = "123456789"
 [slack]
 webhook_url = "https://hooks.slack.com/services/T.../B.../xxx"
 
-# [desktop] — no config needed, uses native OS notifications
+[discord]
+webhook_url = "https://discord.com/api/webhooks/123/abc"
+
+[ntfy]
+topic_url = "https://ntfy.sh/my-claude-topic"
 ```
 
 Env vars override config file values:
 
 | Variable | Purpose | Example |
 |---|---|---|
-| `NOTIFY_BACKEND` | Active backend(s), comma-separated | `telegram,slack` |
+| `NOTIFY_BACKEND` | Active backend(s), comma-separated | `desktop`, `slack,discord` |
 | `NOTIFY_EVENTS` | Event filter, comma-separated | `permission_prompt,idle_prompt` |
 | `TELEGRAM_BOT_TOKEN` | Token from @BotFather | `123456:ABC-DEF...` |
 | `TELEGRAM_CHAT_ID` | User's chat ID | `123456789` |
 | `SLACK_WEBHOOK_URL` | Incoming Webhook URL | `https://hooks.slack.com/services/...` |
+| `DISCORD_WEBHOOK_URL` | Discord webhook URL | `https://discord.com/api/webhooks/...` |
+| `NTFY_TOPIC_URL` | ntfy topic URL | `https://ntfy.sh/my-topic` |
 
 ### File Structure
 
 ```
 Cargo.toml
 src/
-  main.rs              # CLI entry point (clap subcommands): setup, mute/unmute/status, --dry-run, stdin→format→send
+  main.rs              # CLI entry point (clap subcommands): setup, use, mute/unmute/status, --dry-run, stdin→format→send
   types.rs             # HookEvent struct (serde). All optional fields use Option<T>
   config.rs            # Config + per-backend config structs. TOML file + env var overrides
   formatter.rs         # format_message() maps HookEvent → HTML string. friendly_name() hashes session_id
@@ -82,7 +98,18 @@ src/
     telegram.rs        # TelegramNotifier: ureq POST to Telegram Bot API with HTML parse mode
     slack.rs           # SlackNotifier: ureq POST to Slack Incoming Webhook with mrkdwn conversion
     desktop.rs         # DesktopNotifier: osascript (macOS) / notify-send (Linux), no config needed
-  setup.rs             # run_setup() writes backend config + merges hooks into settings.json
+    discord.rs         # DiscordNotifier: ureq POST to Discord webhook, expects 204
+    ntfy.rs            # NtfyNotifier: ureq POST plain text with Title header
+  setup.rs             # run_setup() writes backend config + hooks + skills (--user or --project scope)
+.github/
+  workflows/
+    ci.yml             # Build + clippy on Ubuntu and macOS for PRs and pushes to main
+    release.yml        # Detects version change, builds release binaries, creates tag + GitHub release
+.claude/
+  skills/
+    release/           # /release skill: bump version, update changelog, commit, push
+    dry-run/           # /dry-run skill: test notification formatting
+    add-backend/       # /add-backend skill: scaffold a new backend
 ```
 
 ### CLI Interface
@@ -91,12 +118,12 @@ src/
 claude-notify                                                  # Normal: read hook JSON from stdin, notify
 claude-notify setup telegram <BOT_TOKEN> <CHAT_ID>             # Configure Telegram + hooks (user-level)
 claude-notify setup telegram <BOT_TOKEN> <CHAT_ID> --project   # Configure hooks in current project
-claude-notify setup slack <WEBHOOK_URL>                        # Configure Slack + hooks (user-level)
-claude-notify setup slack <WEBHOOK_URL> --project              # Configure hooks in current project
+claude-notify setup slack <WEBHOOK_URL>                        # Configure Slack + hooks
 claude-notify setup desktop                                    # Configure desktop notifications + hooks
-claude-notify use desktop                                      # Switch active backend to desktop
-claude-notify use slack                                        # Switch active backend to slack
-claude-notify use desktop,slack                                # Use multiple backends simultaneously
+claude-notify setup discord <WEBHOOK_URL>                      # Configure Discord + hooks
+claude-notify setup ntfy <TOPIC_URL>                           # Configure ntfy + hooks
+claude-notify use desktop                                      # Switch active backend
+claude-notify use desktop,slack                                # Use multiple backends
 claude-notify mute                                             # Mute all notifications
 claude-notify mute <session>                                   # Mute a specific session (friendly name or UUID)
 claude-notify unmute                                           # Unmute all
@@ -105,6 +132,17 @@ claude-notify status                                           # Show mute statu
 claude-notify --dry-run                                        # Print formatted message to stdout, don't send
 claude-notify --version                                        # Print version
 ```
+
+### Claude Code Skills
+
+`setup` installs these slash commands into `~/.claude/skills/` (or `.claude/skills/` with `--project`):
+
+| Skill | Description |
+|---|---|
+| `/notify-mute` | Mute all notifications, or pass a session name to mute one |
+| `/notify-unmute` | Unmute all notifications, or pass a session name to unmute one |
+| `/notify-use` | Switch active backends (e.g. `/notify-use desktop,slack`) |
+| `/notify-session` | Toggle mute for the current session using `${CLAUDE_SESSION_ID}` |
 
 ### Message Format
 
@@ -118,7 +156,7 @@ Tool: Bash
 Action: npm install express
 ```
 
-Telegram receives HTML (`<b>` tags). Slack receives mrkdwn (`*` for bold), converted from HTML in the Slack notifier. Desktop receives plain text (HTML tags stripped, entities unescaped).
+Telegram receives HTML (`<b>` tags). Slack receives mrkdwn (`*` for bold). Discord receives Discord markdown (`**` for bold). Desktop and ntfy receive plain text (HTML tags stripped, entities unescaped).
 
 ### Message Filtering
 
@@ -134,6 +172,7 @@ Mute state stored as files in `~/.config/claude-notify/muted/`. `_global` file =
 - `~/.config/claude-notify/muted/` — mute state files
 - `~/.claude/settings.json` — user-level hooks (`--user` scope, default)
 - `.claude/settings.json` — project-level hooks (`--project` scope)
+- `~/.claude/skills/{notify-mute,notify-unmute,notify-use,notify-session}/SKILL.md` — Claude Code slash commands
 
 ## Hook Configuration
 
@@ -156,19 +195,34 @@ Generated by `claude-notify setup`, or added manually to `~/.claude/settings.jso
 }
 ```
 
+## CI/CD
+
+### CI (`ci.yml`)
+
+Runs on PRs and pushes to main. Builds and runs clippy on both Ubuntu and macOS.
+
+### Release (`release.yml`)
+
+Triggered by pushes to main that modify `Cargo.toml`. Detects if the `version` field actually changed, then:
+1. Builds release binaries for `x86_64-unknown-linux-gnu`, `aarch64-apple-darwin`, `x86_64-apple-darwin`
+2. Creates and pushes a git tag (`vX.Y.Z`)
+3. Extracts the changelog section for the version from `CHANGELOG.md`
+4. Creates a GitHub release with binaries and changelog as description
+
 ## Key Design Decisions
 
-- **HTML as internal format** — formatter produces HTML, each backend converts as needed (Telegram uses natively, Slack converts to mrkdwn)
+- **HTML as internal format** — formatter produces HTML, each backend converts as needed
 - **async hooks** — notifications must never block Claude Code
 - **Single binary for all events** — routes internally by `hook_event_name`, keeps config simple
 - **`ureq` over `reqwest`** — no async runtime needed, smaller binary, faster compile
 - **`Notifier` trait** — pluggable backends; adding a new one follows a 6-step checklist
 - **Config file + env var layering** — config file for persistent setup, env vars for overrides
-- **`setup` subcommand** — zero-friction installation with inline credentials
+- **`setup` subcommand** — zero-friction installation with inline credentials + hooks + skills
 - **Friendly session names** — deterministic adjective-noun hash of session_id for readability
 - **Per-session muting** — file-based mute state, supports friendly names and UUIDs
-- **`use` subcommand** — quick backend switching without editing config file; updates `backends` in config.toml
-- **Desktop backend** — zero-config native notifications via osascript (macOS) / notify-send (Linux)
+- **`use` subcommand** — quick backend switching without editing config file
+- **Desktop backend** — zero-config native notifications via osascript/notify-send
+- **Skills** — Claude Code slash commands installed by setup for in-session control
 
 ## Adding a New Notification Backend
 
@@ -179,93 +233,12 @@ Generated by `claude-notify setup`, or added manually to `~/.claude/settings.jso
 5. Add variant to `SetupBackend` enum in `main.rs`
 6. Add config writing logic in `setup.rs` `write_backend_config()`
 
-## Implementation Plan: Desktop Backend + `use` Command
-
-### Desktop Backend
-
-Follow the 6-step backend checklist:
-
-#### 1. `src/notifiers/desktop.rs` — New file
-
-`DesktopNotifier` implementing `Notifier` trait:
-- No config struct needed (zero-config)
-- `new()` always succeeds (no credentials to validate)
-- `send()` strips HTML to plain text, splits into title (first line) + body (rest)
-- macOS: `osascript -e 'display notification "body" with title "title"'`
-- Linux: `notify-send "title" "body"`
-- Uses `std::process::Command`, not `ureq`
-- Private `html_to_plain()` strips `<b>`/`</b>` tags and unescapes `&amp;`/`&lt;`/`&gt;`
-
-#### 2. `src/config.rs` — No config struct needed
-
-Desktop has no config fields. No env var overrides needed.
-
-#### 3. `src/notifiers/mod.rs` — Register backend
-
-Add `pub mod desktop;` and match arm for `"desktop"` in `build_notifiers()`. Unlike other backends, no config check needed — just construct directly.
-
-#### 4. `src/main.rs` — Setup subcommand
-
-Add `Desktop` variant (no fields) to `SetupBackend` enum.
-
-#### 5. `src/setup.rs` — Config writing
-
-Add `SetupBackend::Desktop` branch — only adds `"desktop"` to the `backends` array, no config section.
-
-### `use` Command
-
-Adds a new `Use` subcommand that updates the `backends` field in `~/.config/claude-notify/config.toml` without touching any backend-specific config sections.
-
-#### `src/main.rs`
-
-Add to `Command` enum:
-```rust
-/// Switch active notification backend(s)
-Use {
-    /// Backend name(s), comma-separated (e.g. "desktop", "slack", "desktop,slack")
-    backends: String,
-},
-```
-
-#### `src/main.rs` — Handler
-
-New `cmd_use(backends: String)` function:
-1. Load existing config.toml (or create empty)
-2. Parse comma-separated backends string
-3. Update `backends` array in TOML
-4. Write back to config.toml
-5. Print confirmation: "Active backends: desktop, slack"
-
-The function reuses the config path logic from `config.rs` or `setup.rs`.
-
-### Files to modify
-
-| File | Desktop Backend | `use` Command |
-|------|----------------|---------------|
-| `src/notifiers/desktop.rs` | New file | — |
-| `src/notifiers/mod.rs` | Add module + match arm | — |
-| `src/main.rs` | Add `Desktop` to `SetupBackend` | Add `Use` to `Command` + handler |
-| `src/setup.rs` | Add `Desktop` branch | — |
-| `src/config.rs` | — (no config needed) | — |
-| `CLAUDE.md` | Update docs | Update docs |
-| `README.md` | Update docs | Update docs |
-| `CHANGELOG.md` | Update changelog | Update changelog |
-
-### Verification
-
-1. `cargo build` — compiles without errors
-2. `claude-notify setup desktop` — adds `"desktop"` to backends, writes hooks
-3. `claude-notify use desktop` — switches to desktop only
-4. `claude-notify use slack` — switches to slack only
-5. `claude-notify use desktop,slack` — enables both
-6. Dry-run test still works
-7. Desktop notification appears on macOS via osascript
-
 ## Verification
 
 1. **Build**: `cargo build`
-2. **Dry run**: `echo '{"session_id":"abc123","cwd":"/tmp/test","hook_event_name":"Notification","notification_type":"permission_prompt","tool_name":"Bash","tool_input":{"command":"ls"}}' | claude-notify --dry-run`
-3. **Setup test**: `claude-notify setup telegram <token> <chat_id>` / `claude-notify setup slack <webhook_url>` / `claude-notify setup desktop`
-4. **Use test**: `claude-notify use desktop` → `claude-notify use slack` → `claude-notify use desktop,slack`
-5. **Mute test**: `claude-notify mute` → `claude-notify status` → `claude-notify unmute`
-6. **End-to-end**: Trigger a permission prompt in Claude Code, verify notification arrives on configured backends
+2. **Clippy**: `cargo clippy -- -D warnings`
+3. **Dry run**: `echo '...' | claude-notify --dry-run`
+4. **Setup test**: `claude-notify setup desktop` / `telegram` / `slack` / `discord` / `ntfy`
+5. **Use test**: `claude-notify use desktop` → `claude-notify use slack` → `claude-notify use desktop,slack`
+6. **Mute test**: `claude-notify mute` → `claude-notify status` → `claude-notify unmute`
+7. **End-to-end**: Trigger a permission prompt in Claude Code, verify notification arrives
