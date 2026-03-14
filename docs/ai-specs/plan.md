@@ -21,11 +21,12 @@ All hooks run with `async: true` so they never block Claude Code.
 - **`serde` + `serde_json`** — JSON deserialization of hook payloads
 - **`toml`** — config file parsing
 - **`clap`** — CLI argument parsing with derive macros and subcommands
+- **`lettre`** — SMTP email sending with STARTTLS (rustls-tls, no default features)
 
 ## Architecture
 
 ```
-Claude Code Event → Hook (async) → claude-notify (binary) → Notifier trait → Desktop / Telegram / Slack / Discord / Ntfy
+Claude Code Event → Hook (async) → claude-notify (binary) → Notifier trait → Backend
 ```
 
 The hook invokes a native binary directly — no runtime needed on the target machine. The notification backend is abstracted behind a `Notifier` trait so new channels can be added without changing the core logic.
@@ -41,11 +42,15 @@ pub trait Notifier {
 
 | Backend | Config Required | Transport | Success Status |
 |---|---|---|---|
-| Desktop | None (zero-config) | `osascript` (macOS) / `notify-send` (Linux) | exit code 0 |
+| Desktop | None (zero-config) | `osascript` (macOS) / `notify-send` (Linux) / PowerShell toast (Windows) | exit code 0 |
 | Telegram | `bot_token`, `chat_id` | ureq POST to Bot API | 200 |
 | Slack | `webhook_url` | ureq POST to Incoming Webhook | 200 |
 | Discord | `webhook_url` | ureq POST `{"content": text}` | 204 |
 | Ntfy | `topic_url` | ureq POST plain text with `Title` header | 200 |
+| Pushbullet | `api_token` | ureq POST `{"type":"note"}` with `Access-Token` header | 200 |
+| Teams | `webhook_url` | ureq POST Adaptive Card to Workflows webhook | 2xx |
+| Webhook | `url` | ureq POST `{"title","body","text"}` to any URL | 2xx |
+| Email | `from`, `to`, `smtp_host`, `smtp_username`, `smtp_password` | lettre SMTP with STARTTLS (port 587) | SMTP success |
 
 ### Configuration
 
@@ -69,6 +74,23 @@ webhook_url = "https://discord.com/api/webhooks/123/abc"
 
 [ntfy]
 topic_url = "https://ntfy.sh/my-claude-topic"
+
+[pushbullet]
+api_token = "o.xxxxxxxxxxxxxxxxxxxxx"
+
+[teams]
+webhook_url = "https://xxx.webhook.office.com/webhookb2/..."
+
+[webhook]
+url = "https://example.com/notify"
+
+[email]
+from = "claude-notify@example.com"
+to = "you@example.com"
+smtp_host = "smtp.example.com"
+smtp_port = 587
+smtp_username = "user"
+smtp_password = "password"
 ```
 
 Env vars override config file values:
@@ -82,11 +104,21 @@ Env vars override config file values:
 | `SLACK_WEBHOOK_URL` | Incoming Webhook URL | `https://hooks.slack.com/services/...` |
 | `DISCORD_WEBHOOK_URL` | Discord webhook URL | `https://discord.com/api/webhooks/...` |
 | `NTFY_TOPIC_URL` | ntfy topic URL | `https://ntfy.sh/my-topic` |
+| `PUSHBULLET_API_TOKEN` | Pushbullet API token | `o.xxxxxxxxxxxxxxxxxxxxx` |
+| `TEAMS_WEBHOOK_URL` | Teams webhook URL | `https://xxx.webhook.office.com/...` |
+| `WEBHOOK_URL` | Generic webhook URL | `https://example.com/notify` |
+| `EMAIL_FROM` | Sender email | `claude-notify@example.com` |
+| `EMAIL_TO` | Recipient email | `you@example.com` |
+| `EMAIL_SMTP_HOST` | SMTP hostname | `smtp.example.com` |
+| `EMAIL_SMTP_PORT` | SMTP port (default 587) | `587` |
+| `EMAIL_SMTP_USERNAME` | SMTP username | `user` |
+| `EMAIL_SMTP_PASSWORD` | SMTP password | `password` |
 
 ### File Structure
 
 ```
 Cargo.toml
+LICENSE
 src/
   main.rs              # CLI entry point (clap subcommands): setup, use, mute/unmute/status, --dry-run, stdin→format→send
   types.rs             # HookEvent struct (serde). All optional fields use Option<T>
@@ -97,13 +129,18 @@ src/
     mod.rs             # build_notifiers() registry: config → Vec<Box<dyn Notifier>>
     telegram.rs        # TelegramNotifier: ureq POST to Telegram Bot API with HTML parse mode
     slack.rs           # SlackNotifier: ureq POST to Slack Incoming Webhook with mrkdwn conversion
-    desktop.rs         # DesktopNotifier: osascript (macOS) / notify-send (Linux), no config needed
+    desktop.rs         # DesktopNotifier: osascript (macOS) / notify-send (Linux) / PowerShell toast (Windows)
     discord.rs         # DiscordNotifier: ureq POST to Discord webhook, expects 204
     ntfy.rs            # NtfyNotifier: ureq POST plain text with Title header
+    pushbullet.rs      # PushbulletNotifier: ureq POST to Pushbullet API with Access-Token header
+    teams.rs           # TeamsNotifier: ureq POST Adaptive Card to Teams Workflows webhook
+    webhook.rs         # WebhookNotifier: ureq POST JSON {title, body, text} to any URL
+    email.rs           # EmailNotifier: lettre SMTP with STARTTLS (port 587)
   setup.rs             # run_setup() writes backend config + hooks + skills (--user or --project scope)
+install.sh             # curl-based installer, detects OS/arch, downloads from GitHub releases
 .github/
   workflows/
-    ci.yml             # Build + clippy on Ubuntu and macOS for PRs and pushes to main
+    ci.yml             # Build + clippy on Ubuntu, macOS, and Windows for PRs and pushes to main
     release.yml        # Detects version change, builds release binaries, creates tag + GitHub release
 .claude/
   skills/
@@ -116,16 +153,19 @@ src/
 
 ```
 claude-notify                                                  # Normal: read hook JSON from stdin, notify
-claude-notify setup telegram <BOT_TOKEN> <CHAT_ID>             # Configure Telegram + hooks (user-level)
-claude-notify setup telegram <BOT_TOKEN> <CHAT_ID> --project   # Configure hooks in current project
+claude-notify setup telegram <BOT_TOKEN> <CHAT_ID>             # Configure Telegram + hooks
 claude-notify setup slack <WEBHOOK_URL>                        # Configure Slack + hooks
 claude-notify setup desktop                                    # Configure desktop notifications + hooks
+claude-notify setup email <FROM> <TO> <HOST> <USER> <PASS>     # Configure email via SMTP + hooks
 claude-notify setup discord <WEBHOOK_URL>                      # Configure Discord + hooks
 claude-notify setup ntfy <TOPIC_URL>                           # Configure ntfy + hooks
+claude-notify setup pushbullet <API_TOKEN>                     # Configure Pushbullet + hooks
+claude-notify setup teams <WEBHOOK_URL>                        # Configure Teams + hooks
+claude-notify setup webhook <URL>                              # Configure generic webhook + hooks
 claude-notify use desktop                                      # Switch active backend
 claude-notify use desktop,slack                                # Use multiple backends
 claude-notify mute                                             # Mute all notifications
-claude-notify mute <session>                                   # Mute a specific session (friendly name or UUID)
+claude-notify mute <session>                                   # Mute a specific session
 claude-notify unmute                                           # Unmute all
 claude-notify unmute <session>                                 # Unmute a specific session
 claude-notify status                                           # Show mute status
@@ -156,7 +196,7 @@ Tool: Bash
 Action: npm install express
 ```
 
-Telegram receives HTML (`<b>` tags). Slack receives mrkdwn (`*` for bold). Discord receives Discord markdown (`**` for bold). Desktop and ntfy receive plain text (HTML tags stripped, entities unescaped).
+Telegram receives HTML (`<b>` tags). Slack receives mrkdwn (`*` for bold). Discord and Teams receive markdown (`**` for bold). Desktop, ntfy, Pushbullet, webhook, and email receive plain text (HTML tags stripped, entities unescaped).
 
 ### Message Filtering
 
@@ -199,12 +239,12 @@ Generated by `claude-notify setup`, or added manually to `~/.claude/settings.jso
 
 ### CI (`ci.yml`)
 
-Runs on PRs and pushes to main. Builds and runs clippy on both Ubuntu and macOS.
+Runs on PRs and pushes to main. Builds and runs clippy on Ubuntu, macOS, and Windows.
 
 ### Release (`release.yml`)
 
 Triggered by pushes to main that modify `Cargo.toml`. Detects if the `version` field actually changed, then:
-1. Builds release binaries for `x86_64-unknown-linux-gnu`, `aarch64-apple-darwin`, `x86_64-apple-darwin`
+1. Builds release binaries for `x86_64-unknown-linux-gnu`, `aarch64-apple-darwin`, `x86_64-apple-darwin`, `x86_64-pc-windows-msvc`
 2. Creates and pushes a git tag (`vX.Y.Z`)
 3. Extracts the changelog section for the version from `CHANGELOG.md`
 4. Creates a GitHub release with binaries and changelog as description
@@ -215,13 +255,15 @@ Triggered by pushes to main that modify `Cargo.toml`. Detects if the `version` f
 - **async hooks** — notifications must never block Claude Code
 - **Single binary for all events** — routes internally by `hook_event_name`, keeps config simple
 - **`ureq` over `reqwest`** — no async runtime needed, smaller binary, faster compile
+- **`lettre` for email** — standard Rust SMTP library, reuses rustls from ureq
 - **`Notifier` trait** — pluggable backends; adding a new one follows a 6-step checklist
 - **Config file + env var layering** — config file for persistent setup, env vars for overrides
 - **`setup` subcommand** — zero-friction installation with inline credentials + hooks + skills
 - **Friendly session names** — deterministic adjective-noun hash of session_id for readability
 - **Per-session muting** — file-based mute state, supports friendly names and UUIDs
 - **`use` subcommand** — quick backend switching without editing config file
-- **Desktop backend** — zero-config native notifications via osascript/notify-send
+- **Desktop backend** — zero-config native notifications on macOS, Linux, and Windows
+- **Generic webhook** — escape hatch for arbitrary integrations
 - **Skills** — Claude Code slash commands installed by setup for in-session control
 
 ## Adding a New Notification Backend
@@ -238,7 +280,7 @@ Triggered by pushes to main that modify `Cargo.toml`. Detects if the `version` f
 1. **Build**: `cargo build`
 2. **Clippy**: `cargo clippy -- -D warnings`
 3. **Dry run**: `echo '...' | claude-notify --dry-run`
-4. **Setup test**: `claude-notify setup desktop` / `telegram` / `slack` / `discord` / `ntfy`
+4. **Setup test**: `claude-notify setup desktop` / `telegram` / `slack` / `discord` / `ntfy` / `pushbullet` / `teams` / `webhook` / `email`
 5. **Use test**: `claude-notify use desktop` → `claude-notify use slack` → `claude-notify use desktop,slack`
 6. **Mute test**: `claude-notify mute` → `claude-notify status` → `claude-notify unmute`
 7. **End-to-end**: Trigger a permission prompt in Claude Code, verify notification arrives
