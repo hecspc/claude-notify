@@ -75,6 +75,6 @@ src/
 
 ## Design Docs
 
-- `docs/ai-specs/notification/design.md` — original requirements
-- `docs/ai-specs/notification/plan.md` — architecture and implementation plan
-- `docs/ai-specs/notification/implementation.md` — full source reference
+- `docs/ai-specs/design.md` — original requirements
+- `docs/ai-specs/plan.md` — architecture and implementation plan
+- `docs/ai-specs/implementation.md` — full source reference

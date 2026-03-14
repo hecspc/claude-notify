@@ -2,7 +2,7 @@
 
 ## Build Status
 
-Binary compiles to a 3.6 MB release binary. Installed to `~/.local/bin/claude-notify`.
+Binary compiles to a 3.6 MB release binary. Installed to `~/.bin/claude-notify`.
 
 ## Project Structure
 
@@ -221,7 +221,7 @@ Environment variables override config file values:
 
 ```bash
 cargo build --release
-cp target/release/claude-notify ~/.local/bin/
+cp target/release/claude-notify ~/.bin/
 claude-notify setup desktop                                    # zero-config
 claude-notify setup telegram <BOT_TOKEN> <CHAT_ID>             # Telegram
 claude-notify setup slack <WEBHOOK_URL>                        # Slack

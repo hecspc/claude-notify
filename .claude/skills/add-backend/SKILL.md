@@ -59,4 +59,4 @@ Add a `SetupBackend::{Backend}` branch in `write_backend_config()` that:
 - Run `cargo build` to verify compilation
 - Run `/dry-run` to verify existing functionality isn't broken
 - Update CLAUDE.md, README.md, and CHANGELOG.md with the new backend
-- Update `docs/ai-specs/notification/implementation.md`
+- Update `docs/ai-specs/implementation.md`

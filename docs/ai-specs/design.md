@@ -1,4 +1,4 @@
-# Engineering bot notification
+# claude-notify design specs
 
 I want to be able to be notified everytime Claude Code is requesting an user input either because need some permission, or because it is finished or any other event from claude code.
 

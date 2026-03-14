@@ -13,7 +13,7 @@ When running Claude Code sessions (especially long-running or parallel ones), se
 ```bash
 # Build and install
 cargo build --release
-cp target/release/claude-notify ~/.local/bin/
+cp target/release/claude-notify ~/.bin/
 
 # One-command setup: configures credentials + hooks + Claude Code skills
 claude-notify setup desktop                                           # zero-config native OS notifications
@@ -247,6 +247,10 @@ echo '{"session_id":"abc123","cwd":"/tmp/test","hook_event_name":"Stop","last_as
 # Dry run a task completed event
 echo '{"session_id":"abc123","cwd":"/tmp/test","hook_event_name":"TaskCompleted","task_subject":"Fix auth bug","teammate_name":"implementer"}' | claude-notify --dry-run
 ```
+
+## Disclaimer
+
+This project was entirely designed, coded, and documented by AI (Claude, by Anthropic) using [Claude Code](https://docs.anthropic.com/en/docs/claude-code). A human provided the requirements and direction — all implementation was AI-generated.
 
 ## License
 
