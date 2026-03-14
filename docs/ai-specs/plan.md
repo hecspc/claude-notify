@@ -49,7 +49,7 @@ pub trait Notifier {
 | Ntfy | `topic_url` | ureq POST plain text with `Title` header | 200 |
 | Pushbullet | `api_token` | ureq POST `{"type":"note"}` with `Access-Token` header | 200 |
 | Teams | `webhook_url` | ureq POST Adaptive Card to Workflows webhook | 2xx |
-| Webhook | `url` | ureq POST `{"title","body","text"}` to any URL | 2xx |
+| Webhook | `url`, optional `headers` | ureq POST `{"title","body","text"}` to any URL. Supports named instances | 2xx |
 | Email | `from`, `to`, `smtp_host`, `smtp_username`, `smtp_password` | lettre SMTP with STARTTLS (port 587) | SMTP success |
 
 ### Configuration
@@ -82,7 +82,15 @@ api_token = "o.xxxxxxxxxxxxxxxxxxxxx"
 webhook_url = "https://xxx.webhook.office.com/webhookb2/..."
 
 [webhook]
-url = "https://example.com/notify"
+url = "https://example.com/notify"                    # unnamed webhook
+
+[webhook.ha-appletv]                                  # named instance
+url = "http://homeassistant:8123/api/webhook/claude-notify"
+
+[webhook.ha-direct]                                   # named instance with auth headers
+url = "http://homeassistant:8123/api/services/notify/apple_tv"
+[webhook.ha-direct.headers]
+Authorization = "Bearer YOUR_HA_LONG_LIVED_TOKEN"
 
 [email]
 from = "claude-notify@example.com"
@@ -134,7 +142,7 @@ src/
     ntfy.rs            # NtfyNotifier: ureq POST plain text with Title header
     pushbullet.rs      # PushbulletNotifier: ureq POST to Pushbullet API with Access-Token header
     teams.rs           # TeamsNotifier: ureq POST Adaptive Card to Teams Workflows webhook
-    webhook.rs         # WebhookNotifier: ureq POST JSON {title, body, text} to any URL
+    webhook.rs         # WebhookNotifier: ureq POST JSON {title, body, text} to any URL. Named instances + custom headers
     email.rs           # EmailNotifier: lettre SMTP with STARTTLS (port 587)
   setup.rs             # run_setup() writes backend config + hooks + skills (--user or --project scope)
 install.sh             # curl-based installer, detects OS/arch, downloads from GitHub releases
@@ -161,9 +169,11 @@ claude-notify setup discord <WEBHOOK_URL>                      # Configure Disco
 claude-notify setup ntfy <TOPIC_URL>                           # Configure ntfy + hooks
 claude-notify setup pushbullet <API_TOKEN>                     # Configure Pushbullet + hooks
 claude-notify setup teams <WEBHOOK_URL>                        # Configure Teams + hooks
-claude-notify setup webhook <URL>                              # Configure generic webhook + hooks
+claude-notify setup webhook <URL>                              # Configure generic webhook (unnamed)
+claude-notify setup webhook <NAME> <URL>                       # Configure named webhook instance
 claude-notify use desktop                                      # Switch active backend
 claude-notify use desktop,slack                                # Use multiple backends
+claude-notify use webhook.ha-appletv                           # Use a named webhook instance
 claude-notify mute                                             # Mute all notifications
 claude-notify mute <session>                                   # Mute a specific session
 claude-notify unmute                                           # Unmute all

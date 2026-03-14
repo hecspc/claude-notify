@@ -64,7 +64,7 @@ All fields except `session_id` and `hook_event_name` are `Option<T>` because dif
 
 Loading order: TOML file → env var overrides. If no backends specified, defaults to `["telegram"]`. Event filtering uses the `events` list — `None` means all events pass through.
 
-Structs: `Config` (backends, events, telegram, slack, discord, ntfy, pushbullet, webhook, teams, email), `TelegramConfig` (bot_token, chat_id), `SlackConfig` (webhook_url), `DiscordConfig` (webhook_url), `NtfyConfig` (topic_url), `PushbulletConfig` (api_token), `WebhookConfig` (url), `TeamsConfig` (webhook_url), `EmailConfig` (from, to, smtp_host, smtp_port, smtp_username, smtp_password).
+Structs: `Config` (backends, events, telegram, slack, discord, ntfy, pushbullet, webhook, teams, email), `TelegramConfig` (bot_token, chat_id), `SlackConfig` (webhook_url), `DiscordConfig` (webhook_url), `NtfyConfig` (topic_url), `PushbulletConfig` (api_token), `WebhookInstanceConfig` (url, headers, instances), `WebhookConfig` (url, headers), `TeamsConfig` (webhook_url), `EmailConfig` (from, to, smtp_host, smtp_port, smtp_username, smtp_password).
 
 Env var overrides: `NOTIFY_BACKEND`, `NOTIFY_EVENTS`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `SLACK_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL`, `NTFY_TOPIC_URL`, `PUSHBULLET_API_TOKEN`, `TEAMS_WEBHOOK_URL`, `WEBHOOK_URL`, `EMAIL_FROM`, `EMAIL_TO`, `EMAIL_SMTP_HOST`, `EMAIL_SMTP_PORT`, `EMAIL_SMTP_USERNAME`, `EMAIL_SMTP_PASSWORD`.
 
@@ -106,11 +106,11 @@ Microsoft Teams backend. Uses the Adaptive Card format required by Teams Workflo
 
 ### `src/notifiers/webhook.rs`
 
-Generic webhook backend. POSTs JSON `{"title": ..., "body": ..., "text": ...}` to any URL. Accepts any 2xx response as success. Allows integration with arbitrary services (Home Assistant, Zapier, custom endpoints).
+Generic webhook backend. POSTs JSON `{"title": ..., "body": ..., "text": ...}` to any URL. Accepts any 2xx response as success. Supports named instances (`webhook.name` in backends array) and optional custom headers (auth tokens, etc.). Each instance gets its own `url` and optional `headers` table in config. The `build_notifiers()` registry matches both `"webhook"` (unnamed) and `"webhook.*"` (named) patterns.
 
 ### `src/notifiers/mod.rs`
 
-Registry pattern: reads `config.backends` and constructs the corresponding `Notifier` implementations. Adding a new backend means adding a match arm and a new module. Desktop requires no config check.
+Registry pattern: reads `config.backends` and constructs the corresponding `Notifier` implementations. Adding a new backend means adding a match arm and a new module. Desktop requires no config check. Webhook uses a prefix match: `"webhook"` for unnamed, `"webhook.*"` for named instances which are looked up in `config.webhook.instances`.
 
 ### `src/formatter.rs`
 
@@ -212,7 +212,7 @@ Claude Code Event
           → NtfyNotifier.send() → ntfy topic URL
           → PushbulletNotifier.send() → Pushbullet API
           → TeamsNotifier.send() → Teams Workflows webhook
-          → WebhookNotifier.send() → any HTTP endpoint
+          → WebhookNotifier.send() → any HTTP endpoint (unnamed or named instances)
 ```
 
 ## Configuration
@@ -237,6 +237,31 @@ webhook_url = "https://discord.com/api/webhooks/123/abc"
 
 [ntfy]
 topic_url = "https://ntfy.sh/my-claude-topic"
+
+[pushbullet]
+api_token = "o.xxxxxxxxxxxxxxxxxxxxx"
+
+[teams]
+webhook_url = "https://xxx.webhook.office.com/webhookb2/..."
+
+[webhook]
+url = "https://example.com/notify"                    # unnamed webhook
+
+[webhook.ha-appletv]                                  # named instance
+url = "http://homeassistant:8123/api/webhook/claude-notify"
+
+[webhook.ha-direct]                                   # named instance with auth headers
+url = "http://homeassistant:8123/api/services/notify/apple_tv"
+[webhook.ha-direct.headers]
+Authorization = "Bearer YOUR_HA_LONG_LIVED_TOKEN"
+
+[email]
+from = "claude-notify@example.com"
+to = "you@example.com"
+smtp_host = "smtp.example.com"
+smtp_port = 587
+smtp_username = "user"
+smtp_password = "password"
 ```
 
 Environment variables override config file values:
