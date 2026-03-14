@@ -98,14 +98,13 @@ fn format_task_completed(event: &HookEvent) -> FormattedBody {
     if let Some(teammate) = &event.teammate_name {
         lines.push(format!("Teammate: {}", html_escape(teammate)));
     }
-    if let Some(desc) = &event.task_description {
-        if !desc.is_empty() {
-            let short = truncate_lines(desc, 300);
-            lines.push(format!(
-                "\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\n{}",
-                html_escape(&short)
-            ));
-        }
+    if matches!(&event.task_description, Some(desc) if !desc.is_empty()) {
+        let desc = event.task_description.as_ref().unwrap();
+        let short = truncate_lines(desc, 300);
+        lines.push(format!(
+            "\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\n{}",
+            html_escape(&short)
+        ));
     }
 
     if lines.is_empty() {
