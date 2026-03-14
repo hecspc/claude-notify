@@ -4,6 +4,8 @@ All notable changes to claude-notify are documented here.
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-03-14
+
 ### Added
 - Email notification backend via SMTP with STARTTLS (`claude-notify setup email <FROM> <TO> <HOST> <USER> <PASS>`)
 - Microsoft Teams notification backend via Workflows webhook (`claude-notify setup teams <WEBHOOK_URL>`)
