@@ -18,6 +18,9 @@ case "$OS" in
       *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
     esac
     ;;
+  mingw*|msys*|cygwin*)
+    ARTIFACT="claude-notify-windows-x86_64.exe"
+    ;;
   *) echo "Unsupported OS: $OS"; exit 1 ;;
 esac
 

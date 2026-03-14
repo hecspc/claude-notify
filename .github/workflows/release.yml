@@ -47,6 +47,9 @@ jobs:
           - os: macos-latest
             target: x86_64-apple-darwin
             artifact: claude-notify-macos-x86_64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: claude-notify-windows-x86_64.exe
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -55,10 +58,14 @@ jobs:
           targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
       - run: cargo build --release --target ${{ matrix.target }}
-      - name: Package binary
+      - name: Package binary (unix)
+        if: runner.os != 'Windows'
         run: |
           cp target/${{ matrix.target }}/release/claude-notify ${{ matrix.artifact }}
           chmod +x ${{ matrix.artifact }}
+      - name: Package binary (windows)
+        if: runner.os == 'Windows'
+        run: cp target/${{ matrix.target }}/release/claude-notify.exe ${{ matrix.artifact }}
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
@@ -102,4 +109,5 @@ jobs:
             --notes-file /tmp/release-notes.md \
             artifacts/claude-notify-linux-x86_64/claude-notify-linux-x86_64 \
             artifacts/claude-notify-macos-aarch64/claude-notify-macos-aarch64 \
-            artifacts/claude-notify-macos-x86_64/claude-notify-macos-x86_64
+            artifacts/claude-notify-macos-x86_64/claude-notify-macos-x86_64 \
+            artifacts/claude-notify-windows-x86_64.exe/claude-notify-windows-x86_64.exe

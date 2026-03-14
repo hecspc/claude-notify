@@ -220,7 +220,7 @@ events = ["permission_prompt", "idle_prompt", "elicitation_dialog", "task_comple
 
 ## Desktop Setup
 
-No configuration needed — just run `claude-notify setup desktop`. Uses `osascript` on macOS and `notify-send` on Linux.
+No configuration needed — just run `claude-notify setup desktop`. Uses `osascript` on macOS, `notify-send` on Linux, and PowerShell toast notifications on Windows.
 
 ## Discord Setup
 

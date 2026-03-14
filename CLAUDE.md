@@ -45,7 +45,7 @@ src/
     mod.rs          — build_notifiers() registry: config → Vec<Box<dyn Notifier>>
     telegram.rs     — TelegramNotifier: ureq POST to Telegram Bot API with HTML parse mode
     slack.rs        — SlackNotifier: ureq POST to Slack Incoming Webhook, converts HTML→mrkdwn
-    desktop.rs      — DesktopNotifier: osascript (macOS) / notify-send (Linux), zero-config
+    desktop.rs      — DesktopNotifier: osascript (macOS) / notify-send (Linux) / PowerShell toast (Windows), zero-config
     discord.rs      — DiscordNotifier: ureq POST to Discord webhook, expects 204
     email.rs        — EmailNotifier: lettre SMTP with STARTTLS (port 587)
     ntfy.rs         — NtfyNotifier: ureq POST plain text with Title header

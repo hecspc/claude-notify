@@ -82,7 +82,7 @@ Uses Slack Incoming Webhooks — simplest integration, no OAuth needed. `html_to
 
 ### `src/notifiers/desktop.rs`
 
-Zero-config backend. `html_to_plain()` strips HTML tags and unescapes entities. Splits message into title (first line) + body, then dispatches via `osascript` on macOS or `notify-send` on Linux.
+Zero-config backend. `html_to_plain()` strips HTML tags and unescapes entities. Splits message into title (first line) + body, then dispatches via `osascript` on macOS, `notify-send` on Linux, or PowerShell toast notifications (`Windows.UI.Notifications.ToastNotificationManager`) on Windows.
 
 ### `src/notifiers/discord.rs`
 

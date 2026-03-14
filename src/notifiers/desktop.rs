@@ -45,6 +45,26 @@ impl Notifier for DesktopNotifier {
             if !status.success() {
                 return Err("notify-send failed".into());
             }
+        } else if cfg!(target_os = "windows") {
+            let ps_title = title.replace('\'', "''");
+            let ps_body = body.replace('\'', "''");
+            let script = format!(
+                "[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null; \
+                 $xml = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent(1); \
+                 $text = $xml.GetElementsByTagName('text'); \
+                 $text[0].AppendChild($xml.CreateTextNode('{ps_title}')) | Out-Null; \
+                 $text[1].AppendChild($xml.CreateTextNode('{ps_body}')) | Out-Null; \
+                 $toast = [Windows.UI.Notifications.ToastNotification]::new($xml); \
+                 [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('claude-notify').Show($toast)"
+            );
+            let status = Command::new("powershell")
+                .arg("-NoProfile")
+                .arg("-Command")
+                .arg(&script)
+                .status()?;
+            if !status.success() {
+                return Err("powershell toast notification failed".into());
+            }
         } else {
             return Err("desktop notifications not supported on this platform".into());
         }
