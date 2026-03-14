@@ -10,6 +10,10 @@ pub struct Config {
     pub telegram: Option<TelegramConfig>,
     #[serde(default)]
     pub slack: Option<SlackConfig>,
+    #[serde(default)]
+    pub discord: Option<DiscordConfig>,
+    #[serde(default)]
+    pub ntfy: Option<NtfyConfig>,
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
@@ -21,6 +25,16 @@ pub struct TelegramConfig {
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct SlackConfig {
     pub webhook_url: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct DiscordConfig {
+    pub webhook_url: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct NtfyConfig {
+    pub topic_url: Option<String>,
 }
 
 impl Config {
@@ -35,7 +49,7 @@ impl Config {
         config
     }
 
-    fn config_path() -> PathBuf {
+    pub fn config_path() -> PathBuf {
         let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
         PathBuf::from(home)
             .join(".config")
@@ -69,6 +83,16 @@ impl Config {
         if let Ok(val) = std::env::var("SLACK_WEBHOOK_URL") {
             let slack = self.slack.get_or_insert_with(SlackConfig::default);
             slack.webhook_url = Some(val);
+        }
+
+        if let Ok(val) = std::env::var("DISCORD_WEBHOOK_URL") {
+            let discord = self.discord.get_or_insert_with(DiscordConfig::default);
+            discord.webhook_url = Some(val);
+        }
+
+        if let Ok(val) = std::env::var("NTFY_TOPIC_URL") {
+            let ntfy = self.ntfy.get_or_insert_with(NtfyConfig::default);
+            ntfy.topic_url = Some(val);
         }
     }
 

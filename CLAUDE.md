@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-`claude-notify` is a Rust CLI that receives Claude Code hook events via stdin and dispatches notifications to configurable backends (Telegram, Slack). It compiles to a single native binary with no runtime dependencies.
+`claude-notify` is a Rust CLI that receives Claude Code hook events via stdin and dispatches notifications to configurable backends (Telegram, Slack, Desktop, Discord, ntfy). It compiles to a single native binary with no runtime dependencies.
 
 Requires Rust edition 2024 (rustc 1.85+).
 
@@ -15,6 +15,11 @@ cargo run -- --dry-run                                          # run with dry-r
 cargo run -- setup telegram <BOT_TOKEN> <CHAT_ID>               # configure credentials + hooks (user-level)
 cargo run -- setup telegram <BOT_TOKEN> <CHAT_ID> --project     # configure hooks in current project
 cargo run -- setup slack <WEBHOOK_URL>                          # configure Slack notifications
+cargo run -- setup desktop                                      # configure native OS notifications
+cargo run -- setup discord <WEBHOOK_URL>                        # configure Discord notifications
+cargo run -- setup ntfy <TOPIC_URL>                             # configure ntfy notifications
+cargo run -- use desktop                                        # switch active backend(s)
+cargo run -- use desktop,slack                                  # multiple backends
 ```
 
 There are no tests yet. Verify changes with `cargo build` and manual dry-run testing:
@@ -29,13 +34,16 @@ echo '{"session_id":"abc","cwd":"/tmp","hook_event_name":"Notification","notific
 src/
   main.rs           — CLI entry point (clap subcommands). Routes to setup, mute/unmute/status, --dry-run, or stdin→format→send
   types.rs          — HookEvent struct (serde). All optional fields use Option<T>
-  config.rs         — Config + TelegramConfig + SlackConfig. Loads ~/.config/claude-notify/config.toml, env vars override
+  config.rs         — Config + per-backend config structs. Loads ~/.config/claude-notify/config.toml, env vars override
   formatter.rs      — format_message() maps HookEvent → HTML string. friendly_name() hashes session_id to adjective-noun pair
   notifier.rs       — Notifier trait (send + name)
   notifiers/
     mod.rs          — build_notifiers() registry: config → Vec<Box<dyn Notifier>>
     telegram.rs     — TelegramNotifier: ureq POST to Telegram Bot API with HTML parse mode
     slack.rs        — SlackNotifier: ureq POST to Slack Incoming Webhook, converts HTML→mrkdwn
+    desktop.rs      — DesktopNotifier: osascript (macOS) / notify-send (Linux), zero-config
+    discord.rs      — DiscordNotifier: ureq POST to Discord webhook, expects 204
+    ntfy.rs         — NtfyNotifier: ureq POST plain text with Title header
   setup.rs          — run_setup() writes backend config + merges hooks into settings.json (--user or --project scope)
 ```
 

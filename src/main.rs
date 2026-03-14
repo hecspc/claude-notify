@@ -47,6 +47,11 @@ enum Command {
     },
     /// Show mute status
     Status,
+    /// Switch active notification backend(s)
+    Use {
+        /// Backend name(s), comma-separated (e.g. "desktop", "slack,discord")
+        backends: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -62,6 +67,18 @@ pub enum SetupBackend {
     Slack {
         /// Webhook URL from Slack app configuration
         webhook_url: String,
+    },
+    /// Configure desktop notifications (zero-config, uses native OS)
+    Desktop,
+    /// Configure Discord notifications via webhook
+    Discord {
+        /// Webhook URL from Discord channel settings
+        webhook_url: String,
+    },
+    /// Configure ntfy notifications
+    Ntfy {
+        /// Topic URL (e.g. https://ntfy.sh/my-topic)
+        topic_url: String,
     },
 }
 
@@ -161,6 +178,39 @@ fn cmd_status() {
     }
 }
 
+fn cmd_use(backends: &str) {
+    let path = config::Config::config_path();
+
+    let mut config: toml::Table = if path.exists() {
+        let content = std::fs::read_to_string(&path).unwrap_or_default();
+        content.parse().unwrap_or_else(|_| toml::Table::new())
+    } else {
+        toml::Table::new()
+    };
+
+    let names: Vec<String> = backends
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+
+    let arr = names
+        .iter()
+        .map(|s| toml::Value::String(s.clone()))
+        .collect();
+    config.insert("backends".to_string(), toml::Value::Array(arr));
+
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).ok();
+    }
+    if let Err(e) = std::fs::write(&path, config.to_string()) {
+        eprintln!("Failed to write config: {}", e);
+        std::process::exit(1);
+    }
+
+    println!("Active backends: {}", names.join(", "));
+}
+
 fn main() {
     let cli = Cli::parse();
 
@@ -187,6 +237,10 @@ fn main() {
         }
         Some(Command::Status) => {
             cmd_status();
+            return;
+        }
+        Some(Command::Use { backends }) => {
+            cmd_use(&backends);
             return;
         }
         None => {}

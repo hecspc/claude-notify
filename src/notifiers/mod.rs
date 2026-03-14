@@ -1,3 +1,6 @@
+pub mod desktop;
+pub mod discord;
+pub mod ntfy;
 pub mod slack;
 pub mod telegram;
 
@@ -27,6 +30,29 @@ pub fn build_notifiers(config: &Config) -> Vec<Box<dyn Notifier>> {
                     }
                 } else {
                     eprintln!("Warning: slack backend enabled but not configured");
+                }
+            }
+            "desktop" => {
+                notifiers.push(Box::new(desktop::DesktopNotifier::new()));
+            }
+            "discord" => {
+                if let Some(discord_config) = &config.discord {
+                    match discord::DiscordNotifier::new(discord_config) {
+                        Ok(n) => notifiers.push(Box::new(n)),
+                        Err(e) => eprintln!("Warning: failed to init discord: {}", e),
+                    }
+                } else {
+                    eprintln!("Warning: discord backend enabled but not configured");
+                }
+            }
+            "ntfy" => {
+                if let Some(ntfy_config) = &config.ntfy {
+                    match ntfy::NtfyNotifier::new(ntfy_config) {
+                        Ok(n) => notifiers.push(Box::new(n)),
+                        Err(e) => eprintln!("Warning: failed to init ntfy: {}", e),
+                    }
+                } else {
+                    eprintln!("Warning: ntfy backend enabled but not configured");
                 }
             }
             other => {

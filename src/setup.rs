@@ -80,6 +80,53 @@ fn write_backend_config(backend: &SetupBackend) -> Result<(), Box<dyn std::error
             );
             config.insert("slack".to_string(), toml::Value::Table(slack_table));
         }
+        SetupBackend::Desktop => {
+            let backends = config
+                .entry("backends")
+                .or_insert(toml::Value::Array(vec![]));
+            if let toml::Value::Array(arr) = backends {
+                let desktop = toml::Value::String("desktop".to_string());
+                if !arr.contains(&desktop) {
+                    arr.push(desktop);
+                }
+            }
+        }
+        SetupBackend::Discord { webhook_url } => {
+            let backends = config
+                .entry("backends")
+                .or_insert(toml::Value::Array(vec![]));
+            if let toml::Value::Array(arr) = backends {
+                let discord = toml::Value::String("discord".to_string());
+                if !arr.contains(&discord) {
+                    arr.push(discord);
+                }
+            }
+
+            let mut discord_table = toml::Table::new();
+            discord_table.insert(
+                "webhook_url".to_string(),
+                toml::Value::String(webhook_url.clone()),
+            );
+            config.insert("discord".to_string(), toml::Value::Table(discord_table));
+        }
+        SetupBackend::Ntfy { topic_url } => {
+            let backends = config
+                .entry("backends")
+                .or_insert(toml::Value::Array(vec![]));
+            if let toml::Value::Array(arr) = backends {
+                let ntfy = toml::Value::String("ntfy".to_string());
+                if !arr.contains(&ntfy) {
+                    arr.push(ntfy);
+                }
+            }
+
+            let mut ntfy_table = toml::Table::new();
+            ntfy_table.insert(
+                "topic_url".to_string(),
+                toml::Value::String(topic_url.clone()),
+            );
+            config.insert("ntfy".to_string(), toml::Value::Table(ntfy_table));
+        }
     }
 
     if let Some(parent) = path.parent() {
