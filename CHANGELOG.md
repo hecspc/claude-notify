@@ -4,6 +4,8 @@ All notable changes to claude-notify are documented here.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-03-14
+
 ### Added
 - Slack notification backend via Incoming Webhooks (`claude-notify setup slack <WEBHOOK_URL>`)
 - Desktop notification backend — zero-config, uses native OS (`osascript` on macOS, `notify-send` on Linux)
