@@ -85,6 +85,11 @@ pub enum SetupBackend {
         /// API token from Pushbullet settings
         api_token: String,
     },
+    /// Configure generic webhook notifications
+    Webhook {
+        /// URL to POST JSON notifications to
+        url: String,
+    },
 }
 
 fn mute_dir() -> PathBuf {

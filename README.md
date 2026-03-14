@@ -1,6 +1,6 @@
 # claude-notify
 
-Notification bot for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) hook events. Get notifications via Desktop, Telegram, Slack, Discord, ntfy, or Pushbullet when Claude needs your input — permission prompts, questions, idle sessions, or task completions.
+Notification bot for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) hook events. Get notifications via Desktop, Telegram, Slack, Discord, ntfy, Pushbullet, or Webhook when Claude needs your input — permission prompts, questions, idle sessions, or task completions.
 
 Built in Rust for a single native binary with no runtime dependencies.
 
@@ -38,6 +38,7 @@ claude-notify setup slack https://hooks.slack.com/services/T.../B.../xxx  # Slac
 claude-notify setup discord https://discord.com/api/webhooks/123/abc  # Discord
 claude-notify setup ntfy https://ntfy.sh/my-claude-topic              # ntfy
 claude-notify setup pushbullet YOUR_API_TOKEN                         # Pushbullet
+claude-notify setup webhook https://example.com/notify                # generic webhook
 
 # Switch backends on the fly
 claude-notify use desktop              # at my desk
@@ -96,6 +97,7 @@ claude-notify setup desktop                                    # Configure deskt
 claude-notify setup discord <WEBHOOK_URL>                      # Configure Discord notifications
 claude-notify setup ntfy <TOPIC_URL>                           # Configure ntfy notifications
 claude-notify setup pushbullet <API_TOKEN>                     # Configure Pushbullet notifications
+claude-notify setup webhook <URL>                              # Configure generic webhook
 claude-notify use desktop                                      # Switch active backend(s)
 claude-notify use desktop,slack                                # Multiple backends
 claude-notify mute                                             # Mute all notifications
@@ -165,6 +167,9 @@ topic_url = "https://ntfy.sh/my-claude-topic"
 
 [pushbullet]
 api_token = "o.xxxxxxxxxxxxxxxxxxxxx"
+
+[webhook]
+url = "https://example.com/notify"
 ```
 
 ### Environment Variables
@@ -181,6 +186,7 @@ Env vars override config file values.
 | `DISCORD_WEBHOOK_URL` | Discord webhook URL | `https://discord.com/api/webhooks/...` |
 | `NTFY_TOPIC_URL` | ntfy topic URL | `https://ntfy.sh/my-topic` |
 | `PUSHBULLET_API_TOKEN` | Pushbullet API token | `o.xxxxxxxxxxxxxxxxxxxxx` |
+| `WEBHOOK_URL` | Generic webhook URL | `https://example.com/notify` |
 
 ### Event Filtering
 
@@ -205,6 +211,16 @@ No configuration needed — just run `claude-notify setup desktop`. Uses `osascr
 1. Pick a topic name at [ntfy.sh](https://ntfy.sh) (or use your own ntfy server)
 2. Subscribe to the topic on your phone via the ntfy app
 3. Run `claude-notify setup ntfy https://ntfy.sh/my-claude-topic`
+
+## Webhook Setup
+
+Point notifications at any HTTP endpoint. The webhook receives a POST with JSON:
+
+```json
+{"title": "🔔 Permission Required", "body": "Session: safe-seal ...", "text": "full plain text"}
+```
+
+Run `claude-notify setup webhook <URL>`. Any 2xx response is treated as success.
 
 ## Pushbullet Setup
 
@@ -250,7 +266,7 @@ All hooks use `async: true` so they never block Claude Code.
 ## Architecture
 
 ```
-Claude Code Event → Hook (async) → claude-notify → Notifier trait → Desktop / Telegram / Slack / Discord / Ntfy / Pushbullet
+Claude Code Event → Hook (async) → claude-notify → Notifier trait → Desktop / Telegram / Slack / Discord / Ntfy / Pushbullet / Webhook
 ```
 
 The notification backend is abstracted behind a `Notifier` trait. Adding new backends requires implementing a single trait:

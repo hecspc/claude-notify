@@ -4,6 +4,10 @@ All notable changes to claude-notify are documented here.
 
 ## [Unreleased]
 
+### Added
+- Generic webhook notification backend (`claude-notify setup webhook <URL>`)
+- `WEBHOOK_URL` environment variable override
+
 ## [1.1.0] - 2026-03-14
 
 ### Added

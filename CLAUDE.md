@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-`claude-notify` is a Rust CLI that receives Claude Code hook events via stdin and dispatches notifications to configurable backends (Telegram, Slack, Desktop, Discord, ntfy, Pushbullet). It compiles to a single native binary with no runtime dependencies.
+`claude-notify` is a Rust CLI that receives Claude Code hook events via stdin and dispatches notifications to configurable backends (Telegram, Slack, Desktop, Discord, ntfy, Pushbullet, Webhook). It compiles to a single native binary with no runtime dependencies.
 
 Requires Rust edition 2024 (rustc 1.85+).
 
@@ -19,6 +19,7 @@ cargo run -- setup desktop                                      # configure nati
 cargo run -- setup discord <WEBHOOK_URL>                        # configure Discord notifications
 cargo run -- setup ntfy <TOPIC_URL>                             # configure ntfy notifications
 cargo run -- setup pushbullet <API_TOKEN>                       # configure Pushbullet notifications
+cargo run -- setup webhook <URL>                                # configure generic webhook
 cargo run -- use desktop                                        # switch active backend(s)
 cargo run -- use desktop,slack                                  # multiple backends
 ```
@@ -46,6 +47,7 @@ src/
     discord.rs      — DiscordNotifier: ureq POST to Discord webhook, expects 204
     ntfy.rs         — NtfyNotifier: ureq POST plain text with Title header
     pushbullet.rs   — PushbulletNotifier: ureq POST to Pushbullet API with Access-Token header
+    webhook.rs      — WebhookNotifier: ureq POST JSON {title, body, text} to any URL
   setup.rs          — run_setup() writes backend config + hooks + skills (--user or --project scope)
 .github/
   workflows/

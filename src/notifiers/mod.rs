@@ -4,6 +4,7 @@ pub mod ntfy;
 pub mod pushbullet;
 pub mod slack;
 pub mod telegram;
+pub mod webhook;
 
 use crate::config::Config;
 use crate::notifier::Notifier;
@@ -64,6 +65,16 @@ pub fn build_notifiers(config: &Config) -> Vec<Box<dyn Notifier>> {
                     }
                 } else {
                     eprintln!("Warning: pushbullet backend enabled but not configured");
+                }
+            }
+            "webhook" => {
+                if let Some(wh_config) = &config.webhook {
+                    match webhook::WebhookNotifier::new(wh_config) {
+                        Ok(n) => notifiers.push(Box::new(n)),
+                        Err(e) => eprintln!("Warning: failed to init webhook: {}", e),
+                    }
+                } else {
+                    eprintln!("Warning: webhook backend enabled but not configured");
                 }
             }
             other => {

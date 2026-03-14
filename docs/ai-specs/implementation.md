@@ -23,6 +23,7 @@ src/
     discord.rs         # Discord webhook implementation (ureq), HTML→Discord markdown
     ntfy.rs            # ntfy implementation (ureq), plain text POST with Title header
     pushbullet.rs      # Pushbullet implementation (ureq), POST to v2/pushes with Access-Token
+    webhook.rs         # Generic webhook (ureq), POST JSON {title, body, text} to any URL
   setup.rs             # setup subcommand: write backend config + hooks + skills (--user or --project)
 .github/
   workflows/
@@ -61,9 +62,9 @@ All fields except `session_id` and `hook_event_name` are `Option<T>` because dif
 
 Loading order: TOML file → env var overrides. If no backends specified, defaults to `["telegram"]`. Event filtering uses the `events` list — `None` means all events pass through.
 
-Structs: `Config` (backends, events, telegram, slack, discord, ntfy, pushbullet), `TelegramConfig` (bot_token, chat_id), `SlackConfig` (webhook_url), `DiscordConfig` (webhook_url), `NtfyConfig` (topic_url), `PushbulletConfig` (api_token).
+Structs: `Config` (backends, events, telegram, slack, discord, ntfy, pushbullet, webhook), `TelegramConfig` (bot_token, chat_id), `SlackConfig` (webhook_url), `DiscordConfig` (webhook_url), `NtfyConfig` (topic_url), `PushbulletConfig` (api_token), `WebhookConfig` (url).
 
-Env var overrides: `NOTIFY_BACKEND`, `NOTIFY_EVENTS`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `SLACK_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL`, `NTFY_TOPIC_URL`, `PUSHBULLET_API_TOKEN`.
+Env var overrides: `NOTIFY_BACKEND`, `NOTIFY_EVENTS`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `SLACK_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL`, `NTFY_TOPIC_URL`, `PUSHBULLET_API_TOKEN`, `WEBHOOK_URL`.
 
 ### `src/notifier.rs`
 
@@ -92,6 +93,10 @@ Ntfy backend for self-hosted push notifications. `html_to_plain()` strips tags a
 ### `src/notifiers/pushbullet.rs`
 
 Pushbullet backend. `html_to_plain()` strips tags and unescapes entities. Splits message into title (first line) + body. POSTs `{"type": "note", "title": ..., "body": ...}` to `https://api.pushbullet.com/v2/pushes` with `Access-Token` header.
+
+### `src/notifiers/webhook.rs`
+
+Generic webhook backend. POSTs JSON `{"title": ..., "body": ..., "text": ...}` to any URL. Accepts any 2xx response as success. Allows integration with arbitrary services (Home Assistant, Zapier, custom endpoints).
 
 ### `src/notifiers/mod.rs`
 
@@ -195,6 +200,7 @@ Claude Code Event
           → DiscordNotifier.send() → Discord Webhook API
           → NtfyNotifier.send() → ntfy topic URL
           → PushbulletNotifier.send() → Pushbullet API
+          → WebhookNotifier.send() → any HTTP endpoint
 ```
 
 ## Configuration
@@ -233,6 +239,7 @@ Environment variables override config file values:
 | `DISCORD_WEBHOOK_URL` | `[discord].webhook_url` |
 | `NTFY_TOPIC_URL` | `[ntfy].topic_url` |
 | `PUSHBULLET_API_TOKEN` | `[pushbullet].api_token` |
+| `WEBHOOK_URL` | `[webhook].url` |
 
 ## Installation
 

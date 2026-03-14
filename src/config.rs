@@ -16,6 +16,8 @@ pub struct Config {
     pub ntfy: Option<NtfyConfig>,
     #[serde(default)]
     pub pushbullet: Option<PushbulletConfig>,
+    #[serde(default)]
+    pub webhook: Option<WebhookConfig>,
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
@@ -42,6 +44,11 @@ pub struct NtfyConfig {
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct PushbulletConfig {
     pub api_token: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct WebhookConfig {
+    pub url: Option<String>,
 }
 
 impl Config {
@@ -105,6 +112,11 @@ impl Config {
         if let Ok(val) = std::env::var("PUSHBULLET_API_TOKEN") {
             let pb = self.pushbullet.get_or_insert_with(PushbulletConfig::default);
             pb.api_token = Some(val);
+        }
+
+        if let Ok(val) = std::env::var("WEBHOOK_URL") {
+            let wh = self.webhook.get_or_insert_with(WebhookConfig::default);
+            wh.url = Some(val);
         }
     }
 
