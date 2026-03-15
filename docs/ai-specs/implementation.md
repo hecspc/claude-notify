@@ -36,6 +36,27 @@ src/
     release/SKILL.md   # /release: bump version, update changelog, commit, push
     dry-run/SKILL.md   # /dry-run: test notification formatting
     add-backend/SKILL.md # /add-backend: scaffold a new backend
+plugin/                  # Claude Code plugin (alternative to setup for hook wiring)
+  .claude-plugin/
+    plugin.json          # Plugin manifest: name, version, description, author
+  hooks/
+    hooks.json           # Auto-registered hooks: Notification, Stop, TaskCompleted
+  skills/                # Namespaced skills (/claude-notify:setup-*, mute, unmute, use, status, session)
+    setup-telegram/SKILL.md
+    setup-slack/SKILL.md
+    setup-desktop/SKILL.md
+    setup-discord/SKILL.md
+    setup-ntfy/SKILL.md
+    setup-pushbullet/SKILL.md
+    setup-teams/SKILL.md
+    setup-webhook/SKILL.md
+    setup-email/SKILL.md
+    mute/SKILL.md
+    unmute/SKILL.md
+    use/SKILL.md
+    status/SKILL.md
+    session/SKILL.md
+  README.md              # Plugin installation and usage guide
 ```
 
 ## Dependencies
@@ -336,6 +357,26 @@ The `/release` skill automates version bumps:
 | `/notify-session` | `notify-session/SKILL.md` | Toggles mute for current session using `${CLAUDE_SESSION_ID}` |
 
 The `/notify-session` skill uses Claude Code's `${CLAUDE_SESSION_ID}` string substitution to automatically target the active session without user input.
+
+## Claude Code Plugin
+
+The `plugin/` directory contains a Claude Code plugin that provides an alternative installation path. Instead of running `claude-notify setup` to write hooks into `settings.json`, users can install the plugin which auto-registers hooks on install.
+
+### `plugin/.claude-plugin/plugin.json`
+
+Standard plugin manifest with name, version, description, and author. Version is kept in sync with `Cargo.toml`.
+
+### `plugin/hooks/hooks.json`
+
+Defines the same three hooks that `setup` writes (`Notification`, `Stop`, `TaskCompleted`), all with `"async": true`. Uses bare `claude-notify` command — requires the binary to be in `$PATH`.
+
+### `plugin/skills/`
+
+14 skills covering all setup commands (one per backend), plus control commands (mute, unmute, use, status, session). When installed via plugin, skills are namespaced as `/claude-notify:skill-name` (e.g., `/claude-notify:setup-telegram`).
+
+### Plugin vs `setup`
+
+Both approaches coexist. The plugin handles hook wiring automatically; `setup` handles it manually. Both still need `setup` (or the plugin's setup skills) for backend credentials — the plugin cannot write `config.toml` directly, so the skills invoke the CLI commands.
 
 ## Adding a New Backend
 

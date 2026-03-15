@@ -63,6 +63,13 @@ src/
     release/        — /release skill: bump version, update changelog, commit, push
     dry-run/        — /dry-run skill: test notification formatting
     add-backend/    — /add-backend skill: scaffold a new backend
+plugin/               — Claude Code plugin (auto-registers hooks + provides namespaced skills)
+  .claude-plugin/
+    plugin.json     — Plugin manifest (name, version, description)
+  hooks/
+    hooks.json      — Auto-registered hooks for Notification, Stop, TaskCompleted
+  skills/           — Namespaced skills (/claude-notify:setup-*, /claude-notify:mute, etc.)
+  README.md         — Plugin installation and usage guide
 ```
 
 ## Runtime File Paths

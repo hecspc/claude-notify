@@ -146,6 +146,13 @@ src/
     email.rs           # EmailNotifier: lettre SMTP with STARTTLS (port 587)
   setup.rs             # run_setup() writes backend config + hooks + skills (--user or --project scope)
 install.sh             # curl-based installer, detects OS/arch, downloads from GitHub releases
+plugin/                # Claude Code plugin (hooks + skills, auto-registers on install)
+  .claude-plugin/
+    plugin.json        # Plugin manifest
+  hooks/
+    hooks.json         # Auto-registered hook configurations
+  skills/              # Namespaced skills (/claude-notify:setup-telegram, etc.)
+  README.md
 .github/
   workflows/
     ci.yml             # Build + clippy on Ubuntu, macOS, and Windows for PRs and pushes to main
@@ -275,6 +282,97 @@ Triggered by pushes to main that modify `Cargo.toml`. Detects if the `version` f
 - **Desktop backend** — zero-config native notifications on macOS, Linux, and Windows
 - **Generic webhook** — escape hatch for arbitrary integrations
 - **Skills** — Claude Code slash commands installed by setup for in-session control
+
+## Claude Code Plugin
+
+The project includes a Claude Code plugin for seamless integration. The plugin lives in the same repo under `plugin/` and auto-registers hooks and skills when installed — users don't need to run `setup` or manually edit `settings.json`.
+
+### Plugin Structure
+
+```
+plugin/
+  .claude-plugin/
+    plugin.json              # Manifest: name, version, description
+  hooks/
+    hooks.json               # Auto-registers Notification, Stop, TaskCompleted hooks
+  skills/
+    setup-telegram/
+      SKILL.md               # /claude-notify:setup-telegram
+    setup-slack/
+      SKILL.md               # /claude-notify:setup-slack
+    setup-desktop/
+      SKILL.md               # /claude-notify:setup-desktop
+    setup-discord/
+      SKILL.md               # /claude-notify:setup-discord
+    setup-ntfy/
+      SKILL.md               # /claude-notify:setup-ntfy
+    mute/
+      SKILL.md               # /claude-notify:mute
+    unmute/
+      SKILL.md               # /claude-notify:unmute
+    use/
+      SKILL.md               # /claude-notify:use
+    status/
+      SKILL.md               # /claude-notify:status
+  README.md
+```
+
+### Plugin Manifest (`plugin.json`)
+
+```json
+{
+  "name": "claude-notify",
+  "version": "1.1.2",
+  "description": "Native notifications when Claude Code needs your attention — Telegram, Slack, Discord, Desktop, ntfy, and more",
+  "author": { "name": "hecspc" }
+}
+```
+
+### Plugin Hooks (`hooks/hooks.json`)
+
+```json
+{
+  "hooks": {
+    "Notification": [{
+      "matcher": "permission_prompt|idle_prompt|elicitation_dialog",
+      "hooks": [{ "type": "command", "command": "claude-notify", "async": true }]
+    }],
+    "Stop": [{
+      "hooks": [{ "type": "command", "command": "claude-notify", "async": true }]
+    }],
+    "TaskCompleted": [{
+      "hooks": [{ "type": "command", "command": "claude-notify", "async": true }]
+    }]
+  }
+}
+```
+
+Uses bare `claude-notify` — assumes binary is installed to `$PATH`.
+
+### Plugin vs `setup` Command
+
+| Aspect | `claude-notify setup` | Plugin |
+|--------|----------------------|--------|
+| Hook wiring | Writes to `~/.claude/settings.json` | Automatic on plugin install |
+| Skills | Writes to `~/.claude/skills/` | Bundled, namespaced (`/claude-notify:*`) |
+| Distribution | install.sh + manual setup | `claude plugin install` from marketplace |
+| Updates | Re-download binary | `claude plugin update` for config/skills |
+| Backend config | Writes `config.toml` | Same — skills invoke `claude-notify setup` |
+
+Both approaches coexist. Users who install via plugin don't need to run `setup` for hook wiring — they only need it for backend credentials (e.g. `claude-notify setup telegram <TOKEN> <CHAT_ID>`), which the plugin skills guide them through.
+
+### Installation via Plugin
+
+```bash
+# 1. Install binary (required — plugin cannot bundle it)
+curl -sSL https://raw.githubusercontent.com/hecspc/claude-notify/main/install.sh | sh
+
+# 2. Install plugin (auto-wires hooks + adds skills)
+claude plugin install claude-notify
+
+# 3. Configure a backend via skill
+/claude-notify:setup-telegram <BOT_TOKEN> <CHAT_ID>
+```
 
 ## Adding a New Notification Backend
 

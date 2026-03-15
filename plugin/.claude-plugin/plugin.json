@@ -1,0 +1,8 @@
+{
+  "name": "claude-notify",
+  "version": "1.1.2",
+  "description": "Notifications when Claude Code needs your attention — Desktop, Telegram, Slack, Discord, ntfy, Pushbullet, Teams, Webhook, or Email. Auto-registers hooks on install.",
+  "author": {
+    "name": "hecspc"
+  }
+}
