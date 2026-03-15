@@ -2,7 +2,7 @@
 set -e
 
 REPO="hecspc/claude-notify"
-INSTALL_DIR="${INSTALL_DIR:-$HOME/.bin}"
+INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
 VERSION="${1:-latest}"
 
 # Detect OS and architecture

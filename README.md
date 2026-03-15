@@ -17,7 +17,7 @@ curl -sSL https://raw.githubusercontent.com/hecspc/claude-notify/main/install.sh
 # Install a specific version
 curl -sSL https://raw.githubusercontent.com/hecspc/claude-notify/main/install.sh | sh -s 1.0.1
 
-# Custom install directory (default: ~/.bin)
+# Custom install directory (default: ~/.local/bin)
 curl -sSL https://raw.githubusercontent.com/hecspc/claude-notify/main/install.sh | INSTALL_DIR=/usr/local/bin sh
 ```
 
@@ -25,7 +25,7 @@ Or build from source:
 
 ```bash
 cargo build --release
-cp target/release/claude-notify ~/.bin/
+cp target/release/claude-notify ~/.local/bin/
 ```
 
 ## Quick Start

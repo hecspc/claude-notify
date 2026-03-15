@@ -426,7 +426,7 @@ pub fn run_setup(
         Scope::Project => "project (.claude/settings.json)",
     };
     println!("\nSetup complete ({}).", scope_label);
-    println!("Make sure claude-notify is in your PATH (e.g. ~/.bin/).");
+    println!("Make sure claude-notify is in your PATH (e.g. ~/.local/bin/).");
 
     Ok(())
 }
