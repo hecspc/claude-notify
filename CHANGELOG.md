@@ -4,9 +4,15 @@ All notable changes to claude-notify are documented here.
 
 ## [Unreleased]
 
+## [1.1.3] - 2026-03-15
+
 ### Added
+- Claude Code plugin (`plugin/`) for auto-hook registration and namespaced skills
+- 14 plugin skills: setup for all 9 backends + mute, unmute, use, status, session
+- Plugin README with installation and usage guide
 - Named webhook instances (`webhook.name`) for multiple webhook targets
 - Custom headers support for webhooks (auth tokens, etc.)
+- Default install directory changed from `~/.bin` to `~/.local/bin`
 
 ### Changed
 - `claude-notify setup webhook` now supports `<NAME> <URL>` for named instances
