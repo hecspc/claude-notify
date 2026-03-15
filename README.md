@@ -1,6 +1,6 @@
 # claude-notify
 
-Notification bot for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) hook events. Get notifications via Desktop, Telegram, Slack, Discord, ntfy, Pushbullet, Teams, Webhook, or Email when Claude needs your input — permission prompts, questions, idle sessions, or task completions.
+Notification bot for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) hook events. Get notifications via Desktop, Telegram, Slack, Discord, ntfy, Pushbullet, Teams, Webhook, Email, WhatsApp, or OpenClaw when Claude needs your input — permission prompts, questions, idle sessions, or task completions.
 
 Built in Rust for a single native binary with no runtime dependencies.
 
@@ -37,6 +37,8 @@ claude plugin install claude-notify
 | `/claude-notify:setup-teams` | Configure Microsoft Teams notifications |
 | `/claude-notify:setup-webhook` | Configure generic webhook notifications |
 | `/claude-notify:setup-email` | Configure email (SMTP) notifications |
+| `/claude-notify:setup-whatsapp` | Configure WhatsApp notifications via Meta Cloud API |
+| `/claude-notify:setup-openclaw` | Configure OpenClaw Gateway notifications |
 | `/claude-notify:use` | Switch active backends (e.g. `desktop,slack`) |
 | `/claude-notify:mute` | Mute notifications globally or for a session |
 | `/claude-notify:unmute` | Unmute notifications |
@@ -79,6 +81,8 @@ claude-notify setup pushbullet YOUR_API_TOKEN                         # Pushbull
 claude-notify setup teams https://xxx.webhook.office.com/...          # Microsoft Teams
 claude-notify setup webhook https://example.com/notify                # generic webhook
 claude-notify setup webhook ha-appletv http://ha:8123/api/webhook/x   # named webhook instance
+claude-notify setup whatsapp PHONE_ID ACCESS_TOKEN 14155551234        # WhatsApp
+claude-notify setup openclaw http://localhost:3000 TOKEN +1555551234  # OpenClaw
 
 # Switch backends on the fly
 claude-notify use desktop              # at my desk
@@ -141,6 +145,8 @@ claude-notify setup pushbullet <API_TOKEN>                     # Configure Pushb
 claude-notify setup teams <WEBHOOK_URL>                        # Configure Microsoft Teams notifications
 claude-notify setup webhook <URL>                              # Configure generic webhook (unnamed)
 claude-notify setup webhook <NAME> <URL>                      # Configure named webhook instance
+claude-notify setup whatsapp <PHONE_ID> <TOKEN> <RECIPIENT>  # Configure WhatsApp via Meta Cloud API
+claude-notify setup openclaw <URL> <TOKEN> <TARGET>          # Configure OpenClaw Gateway notifications
 claude-notify use desktop                                      # Switch active backend(s)
 claude-notify use desktop,slack                                # Multiple backends
 claude-notify mute                                             # Mute all notifications
@@ -205,6 +211,17 @@ webhook_url = "https://hooks.slack.com/services/T.../B.../xxx"
 [discord]
 webhook_url = "https://discord.com/api/webhooks/123/abc"
 
+[whatsapp]
+phone_number_id = "123456789"
+access_token = "EAAxxxxxxx"
+recipient = "14155551234"
+
+[openclaw]
+gateway_url = "http://localhost:3000"
+token = "my-gateway-token"
+target = "+15555550123"
+channel = "whatsapp"       # optional: whatsapp, telegram, discord, etc.
+
 [email]
 from = "claude-notify@example.com"
 to = "you@example.com"
@@ -255,6 +272,13 @@ Env vars override config file values.
 | `NTFY_TOPIC_URL` | ntfy topic URL | `https://ntfy.sh/my-topic` |
 | `PUSHBULLET_API_TOKEN` | Pushbullet API token | `o.xxxxxxxxxxxxxxxxxxxxx` |
 | `TEAMS_WEBHOOK_URL` | Teams webhook URL | `https://xxx.webhook.office.com/...` |
+| `WHATSAPP_PHONE_NUMBER_ID` | WhatsApp Business phone number ID | `123456789` |
+| `WHATSAPP_ACCESS_TOKEN` | Meta permanent access token | `EAAxxxxxxx` |
+| `WHATSAPP_RECIPIENT` | Recipient phone (international format) | `14155551234` |
+| `OPENCLAW_GATEWAY_URL` | OpenClaw Gateway URL | `http://localhost:3000` |
+| `OPENCLAW_TOKEN` | Gateway Bearer token | `my-gateway-token` |
+| `OPENCLAW_TARGET` | Target destination | `+15555550123` |
+| `OPENCLAW_CHANNEL` | Delivery channel (optional) | `whatsapp` |
 | `WEBHOOK_URL` | Generic webhook URL | `https://example.com/notify` |
 
 ### Event Filtering
@@ -336,6 +360,28 @@ Any 2xx response is treated as success.
 3. Copy the webhook URL
 4. Run `claude-notify setup slack <WEBHOOK_URL>`
 
+## OpenClaw Setup
+
+[OpenClaw](https://openclaw.ai/) is a self-hosted gateway that connects chat apps (WhatsApp, Telegram, Discord, iMessage, etc.) to AI agents. Use it to route claude-notify notifications through any channel OpenClaw supports.
+
+1. Install and run the OpenClaw Gateway
+2. Get your Gateway URL and Bearer token
+3. Run `claude-notify setup openclaw <GATEWAY_URL> <TOKEN> <TARGET>`
+4. Optionally specify a delivery channel: `--channel whatsapp`
+
+```bash
+claude-notify setup openclaw http://localhost:3000 my-token +15555550123
+claude-notify setup openclaw http://localhost:3000 my-token +15555550123 --channel whatsapp
+```
+
+## WhatsApp Setup
+
+1. Create a [Meta Developer](https://developers.facebook.com/) account and create an app with WhatsApp
+2. In the WhatsApp section, get your **Phone Number ID** and generate a **permanent access token**
+3. Run `claude-notify setup whatsapp <PHONE_NUMBER_ID> <ACCESS_TOKEN> <RECIPIENT_PHONE>`
+
+The recipient phone number should be in international format without `+` (e.g. `14155551234`).
+
 ## Telegram Setup
 
 1. Message [@BotFather](https://t.me/BotFather) on Telegram, send `/newbot`, and follow the prompts to get a bot token
@@ -368,7 +414,7 @@ All hooks use `async: true` so they never block Claude Code.
 ## Architecture
 
 ```
-Claude Code Event → Hook (async) → claude-notify → Notifier trait → Desktop / Telegram / Slack / Discord / Ntfy / Pushbullet / Teams / Webhook / Email
+Claude Code Event → Hook (async) → claude-notify → Notifier trait → Desktop / Telegram / Slack / Discord / Ntfy / Pushbullet / Teams / Webhook / Email / WhatsApp / OpenClaw
 ```
 
 The notification backend is abstracted behind a `Notifier` trait. Adding new backends requires implementing a single trait:

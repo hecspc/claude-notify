@@ -2,11 +2,13 @@ pub mod desktop;
 pub mod discord;
 pub mod email;
 pub mod ntfy;
+pub mod openclaw;
 pub mod pushbullet;
 pub mod slack;
 pub mod teams;
 pub mod telegram;
 pub mod webhook;
+pub mod whatsapp;
 
 use crate::config::Config;
 use crate::notifier::Notifier;
@@ -101,6 +103,26 @@ pub fn build_notifiers(config: &Config) -> Vec<Box<dyn Notifier>> {
                     }
                 } else {
                     eprintln!("Warning: webhook backend enabled but not configured");
+                }
+            }
+            "openclaw" => {
+                if let Some(oc_config) = &config.openclaw {
+                    match openclaw::OpenclawNotifier::new(oc_config) {
+                        Ok(n) => notifiers.push(Box::new(n)),
+                        Err(e) => eprintln!("Warning: failed to init openclaw: {}", e),
+                    }
+                } else {
+                    eprintln!("Warning: openclaw backend enabled but not configured");
+                }
+            }
+            "whatsapp" => {
+                if let Some(wa_config) = &config.whatsapp {
+                    match whatsapp::WhatsappNotifier::new(wa_config) {
+                        Ok(n) => notifiers.push(Box::new(n)),
+                        Err(e) => eprintln!("Warning: failed to init whatsapp: {}", e),
+                    }
+                } else {
+                    eprintln!("Warning: whatsapp backend enabled but not configured");
                 }
             }
             other if other.starts_with("webhook.") => {

@@ -23,6 +23,10 @@ pub struct Config {
     pub teams: Option<TeamsConfig>,
     #[serde(default)]
     pub email: Option<EmailConfig>,
+    #[serde(default)]
+    pub whatsapp: Option<WhatsappConfig>,
+    #[serde(default)]
+    pub openclaw: Option<OpenclawConfig>,
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
@@ -76,6 +80,21 @@ pub struct WebhookConfig {
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct TeamsConfig {
     pub webhook_url: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct WhatsappConfig {
+    pub phone_number_id: Option<String>,
+    pub access_token: Option<String>,
+    pub recipient: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct OpenclawConfig {
+    pub gateway_url: Option<String>,
+    pub token: Option<String>,
+    pub target: Option<String>,
+    pub channel: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
@@ -159,6 +178,37 @@ impl Config {
         if let Ok(val) = std::env::var("TEAMS_WEBHOOK_URL") {
             let teams = self.teams.get_or_insert_with(TeamsConfig::default);
             teams.webhook_url = Some(val);
+        }
+
+        let has_openclaw_env = std::env::var("OPENCLAW_GATEWAY_URL").is_ok();
+        if has_openclaw_env {
+            let oc = self.openclaw.get_or_insert_with(OpenclawConfig::default);
+            if let Ok(val) = std::env::var("OPENCLAW_GATEWAY_URL") {
+                oc.gateway_url = Some(val);
+            }
+            if let Ok(val) = std::env::var("OPENCLAW_TOKEN") {
+                oc.token = Some(val);
+            }
+            if let Ok(val) = std::env::var("OPENCLAW_TARGET") {
+                oc.target = Some(val);
+            }
+            if let Ok(val) = std::env::var("OPENCLAW_CHANNEL") {
+                oc.channel = Some(val);
+            }
+        }
+
+        let has_whatsapp_env = std::env::var("WHATSAPP_PHONE_NUMBER_ID").is_ok();
+        if has_whatsapp_env {
+            let wa = self.whatsapp.get_or_insert_with(WhatsappConfig::default);
+            if let Ok(val) = std::env::var("WHATSAPP_PHONE_NUMBER_ID") {
+                wa.phone_number_id = Some(val);
+            }
+            if let Ok(val) = std::env::var("WHATSAPP_ACCESS_TOKEN") {
+                wa.access_token = Some(val);
+            }
+            if let Ok(val) = std::env::var("WHATSAPP_RECIPIENT") {
+                wa.recipient = Some(val);
+            }
         }
 
         let has_email_env = std::env::var("EMAIL_SMTP_HOST").is_ok();

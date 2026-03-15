@@ -183,6 +183,43 @@ fn write_backend_config(backend: &SetupBackend) -> Result<(), Box<dyn std::error
             );
             config.insert("teams".to_string(), toml::Value::Table(teams_table));
         }
+        SetupBackend::Openclaw { gateway_url, token, target, channel } => {
+            let backends = config
+                .entry("backends")
+                .or_insert(toml::Value::Array(vec![]));
+            if let toml::Value::Array(arr) = backends {
+                let oc = toml::Value::String("openclaw".to_string());
+                if !arr.contains(&oc) {
+                    arr.push(oc);
+                }
+            }
+
+            let mut oc_table = toml::Table::new();
+            oc_table.insert("gateway_url".to_string(), toml::Value::String(gateway_url.clone()));
+            oc_table.insert("token".to_string(), toml::Value::String(token.clone()));
+            oc_table.insert("target".to_string(), toml::Value::String(target.clone()));
+            if let Some(ch) = channel {
+                oc_table.insert("channel".to_string(), toml::Value::String(ch.clone()));
+            }
+            config.insert("openclaw".to_string(), toml::Value::Table(oc_table));
+        }
+        SetupBackend::Whatsapp { phone_number_id, access_token, recipient } => {
+            let backends = config
+                .entry("backends")
+                .or_insert(toml::Value::Array(vec![]));
+            if let toml::Value::Array(arr) = backends {
+                let wa = toml::Value::String("whatsapp".to_string());
+                if !arr.contains(&wa) {
+                    arr.push(wa);
+                }
+            }
+
+            let mut wa_table = toml::Table::new();
+            wa_table.insert("phone_number_id".to_string(), toml::Value::String(phone_number_id.clone()));
+            wa_table.insert("access_token".to_string(), toml::Value::String(access_token.clone()));
+            wa_table.insert("recipient".to_string(), toml::Value::String(recipient.clone()));
+            config.insert("whatsapp".to_string(), toml::Value::Table(wa_table));
+        }
         SetupBackend::Webhook { name_or_url, url } => {
             let is_url = name_or_url.starts_with("http://") || name_or_url.starts_with("https://");
 

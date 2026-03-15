@@ -26,6 +26,8 @@ src/
     pushbullet.rs      # Pushbullet implementation (ureq), POST to v2/pushes with Access-Token
     teams.rs           # Microsoft Teams (ureq), POST Adaptive Card to Workflows webhook
     webhook.rs         # Generic webhook (ureq), POST JSON {title, body, text} to any URL
+    whatsapp.rs        # WhatsApp via Meta Cloud API (ureq), POST to graph.facebook.com
+    openclaw.rs        # OpenClaw via Gateway API (ureq), POST to /tools/invoke
   setup.rs             # setup subcommand: write backend config + hooks + skills (--user or --project)
 .github/
   workflows/
@@ -85,9 +87,9 @@ All fields except `session_id` and `hook_event_name` are `Option<T>` because dif
 
 Loading order: TOML file → env var overrides. If no backends specified, defaults to `["telegram"]`. Event filtering uses the `events` list — `None` means all events pass through.
 
-Structs: `Config` (backends, events, telegram, slack, discord, ntfy, pushbullet, webhook, teams, email), `TelegramConfig` (bot_token, chat_id), `SlackConfig` (webhook_url), `DiscordConfig` (webhook_url), `NtfyConfig` (topic_url), `PushbulletConfig` (api_token), `WebhookInstanceConfig` (url, headers, instances), `WebhookConfig` (url, headers), `TeamsConfig` (webhook_url), `EmailConfig` (from, to, smtp_host, smtp_port, smtp_username, smtp_password).
+Structs: `Config` (backends, events, telegram, slack, discord, ntfy, pushbullet, webhook, teams, email, whatsapp, openclaw), `TelegramConfig` (bot_token, chat_id), `SlackConfig` (webhook_url), `DiscordConfig` (webhook_url), `NtfyConfig` (topic_url), `PushbulletConfig` (api_token), `WebhookInstanceConfig` (url, headers, instances), `WebhookConfig` (url, headers), `TeamsConfig` (webhook_url), `EmailConfig` (from, to, smtp_host, smtp_port, smtp_username, smtp_password).
 
-Env var overrides: `NOTIFY_BACKEND`, `NOTIFY_EVENTS`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `SLACK_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL`, `NTFY_TOPIC_URL`, `PUSHBULLET_API_TOKEN`, `TEAMS_WEBHOOK_URL`, `WEBHOOK_URL`, `EMAIL_FROM`, `EMAIL_TO`, `EMAIL_SMTP_HOST`, `EMAIL_SMTP_PORT`, `EMAIL_SMTP_USERNAME`, `EMAIL_SMTP_PASSWORD`.
+Env var overrides: `NOTIFY_BACKEND`, `NOTIFY_EVENTS`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `SLACK_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL`, `NTFY_TOPIC_URL`, `PUSHBULLET_API_TOKEN`, `TEAMS_WEBHOOK_URL`, `WEBHOOK_URL`, `EMAIL_FROM`, `EMAIL_TO`, `EMAIL_SMTP_HOST`, `EMAIL_SMTP_PORT`, `EMAIL_SMTP_USERNAME`, `EMAIL_SMTP_PASSWORD`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_RECIPIENT`, `OPENCLAW_GATEWAY_URL`, `OPENCLAW_TOKEN`, `OPENCLAW_TARGET`, `OPENCLAW_CHANNEL`.
 
 ### `src/notifier.rs`
 
@@ -129,6 +131,14 @@ Microsoft Teams backend. Uses the Adaptive Card format required by Teams Workflo
 
 Generic webhook backend. POSTs JSON `{"title": ..., "body": ..., "text": ...}` to any URL. Accepts any 2xx response as success. Supports named instances (`webhook.name` in backends array) and optional custom headers (auth tokens, etc.). Each instance gets its own `url` and optional `headers` table in config. The `build_notifiers()` registry matches both `"webhook"` (unnamed) and `"webhook.*"` (named) patterns.
 
+### `src/notifiers/openclaw.rs`
+
+OpenClaw backend using the Gateway's `/tools/invoke` HTTP API. Invokes the `agent_send` tool with Bearer auth. Strips HTML tags and unescapes entities for plain text delivery. Supports optional `channel` parameter to route through specific chat apps (WhatsApp, Telegram, Discord, etc.).
+
+### `src/notifiers/whatsapp.rs`
+
+WhatsApp backend using Meta's Cloud API. Converts `<b>` to `*` (WhatsApp bold) and unescapes entities. POSTs to `https://graph.facebook.com/v21.0/{phone_number_id}/messages` with Bearer auth. Requires phone_number_id, access_token, and recipient config.
+
 ### `src/notifiers/mod.rs`
 
 Registry pattern: reads `config.backends` and constructs the corresponding `Notifier` implementations. Adding a new backend means adding a match arm and a new module. Desktop requires no config check. Webhook uses a prefix match: `"webhook"` for unnamed, `"webhook.*"` for named instances which are looked up in `config.webhook.instances`.
@@ -158,6 +168,8 @@ claude-notify setup slack <WEBHOOK_URL>                        # Slack notificat
 claude-notify setup desktop                                    # Desktop notifications (zero-config)
 claude-notify setup discord <WEBHOOK_URL>                      # Discord notifications
 claude-notify setup ntfy <TOPIC_URL>                           # ntfy notifications
+claude-notify setup whatsapp <PHONE_ID> <TOKEN> <RECIPIENT>    # WhatsApp notifications
+claude-notify setup openclaw <URL> <TOKEN> <TARGET>            # OpenClaw Gateway
 claude-notify use desktop                                      # Switch active backend(s)
 claude-notify use desktop,slack                                # Multiple backends
 claude-notify --dry-run                                        # test formatting
@@ -234,6 +246,8 @@ Claude Code Event
           → PushbulletNotifier.send() → Pushbullet API
           → TeamsNotifier.send() → Teams Workflows webhook
           → WebhookNotifier.send() → any HTTP endpoint (unnamed or named instances)
+          → WhatsappNotifier.send() → Meta WhatsApp Cloud API
+          → OpenclawNotifier.send() → OpenClaw Gateway /tools/invoke
 ```
 
 ## Configuration
@@ -276,6 +290,17 @@ url = "http://homeassistant:8123/api/services/notify/apple_tv"
 [webhook.ha-direct.headers]
 Authorization = "Bearer YOUR_HA_LONG_LIVED_TOKEN"
 
+[whatsapp]
+phone_number_id = "123456789"
+access_token = "EAAxxxxxxx"
+recipient = "14155551234"
+
+[openclaw]
+gateway_url = "http://localhost:3000"
+token = "my-gateway-token"
+target = "+15555550123"
+channel = "whatsapp"
+
 [email]
 from = "claude-notify@example.com"
 to = "you@example.com"
@@ -304,6 +329,13 @@ Environment variables override config file values:
 | `NTFY_TOPIC_URL` | `[ntfy].topic_url` |
 | `PUSHBULLET_API_TOKEN` | `[pushbullet].api_token` |
 | `TEAMS_WEBHOOK_URL` | `[teams].webhook_url` |
+| `WHATSAPP_PHONE_NUMBER_ID` | `[whatsapp].phone_number_id` |
+| `WHATSAPP_ACCESS_TOKEN` | `[whatsapp].access_token` |
+| `WHATSAPP_RECIPIENT` | `[whatsapp].recipient` |
+| `OPENCLAW_GATEWAY_URL` | `[openclaw].gateway_url` |
+| `OPENCLAW_TOKEN` | `[openclaw].token` |
+| `OPENCLAW_TARGET` | `[openclaw].target` |
+| `OPENCLAW_CHANNEL` | `[openclaw].channel` |
 | `WEBHOOK_URL` | `[webhook].url` |
 
 ## Installation

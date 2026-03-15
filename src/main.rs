@@ -103,6 +103,27 @@ pub enum SetupBackend {
         /// Webhook URL from Teams Workflows connector
         webhook_url: String,
     },
+    /// Configure OpenClaw notifications via Gateway API
+    Openclaw {
+        /// Gateway URL (e.g. http://localhost:3000)
+        gateway_url: String,
+        /// Bearer token for Gateway authentication
+        token: String,
+        /// Target destination (e.g. phone number, user ID, channel)
+        target: String,
+        /// Optional delivery channel (e.g. whatsapp, telegram, discord)
+        #[arg(long)]
+        channel: Option<String>,
+    },
+    /// Configure WhatsApp notifications via Meta Cloud API
+    Whatsapp {
+        /// WhatsApp Business phone number ID
+        phone_number_id: String,
+        /// Permanent access token from Meta Developer Portal
+        access_token: String,
+        /// Recipient phone number in international format (e.g. 14155551234)
+        recipient: String,
+    },
     /// Configure generic webhook notifications (use NAME for named instances, e.g. "ha-appletv")
     Webhook {
         /// Instance name or URL. If it looks like a URL, creates unnamed webhook. Otherwise creates named instance.

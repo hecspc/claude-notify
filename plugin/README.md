@@ -36,6 +36,8 @@ claude plugin install claude-notify
 | `/claude-notify:setup-teams` | Configure Microsoft Teams notifications |
 | `/claude-notify:setup-webhook` | Configure generic webhook notifications |
 | `/claude-notify:setup-email` | Configure email (SMTP) notifications |
+| `/claude-notify:setup-whatsapp` | Configure WhatsApp notifications via Meta Cloud API |
+| `/claude-notify:setup-openclaw` | Configure OpenClaw Gateway notifications |
 
 ### Control Commands
 

@@ -54,6 +54,26 @@ Add a `SetupBackend::{Backend}` branch in `write_backend_config()` that:
 - Adds the backend name to the `backends` array (if not already present)
 - Writes the backend config section to TOML
 
+### 7. Add plugin skill in `plugin/skills/setup-{backend}/SKILL.md`
+
+Create a new skill directory and SKILL.md for the plugin. Follow the pattern from existing setup skills (e.g. `plugin/skills/setup-telegram/SKILL.md`):
+
+- Frontmatter: `name: setup-{backend}`, `description` explaining what it configures
+- Instructions for how to get credentials
+- The `claude-notify setup {backend} <ARGS>` command to run
+- Example usage
+
+### 8. Update `plugin/README.md`
+
+Add a row to the "Setup Commands" table:
+```
+| `/claude-notify:setup-{backend}` | Configure {Backend} notifications |
+```
+
+### 9. Update `.claude-plugin/plugin.json`
+
+Add the new backend name to the `description` field so marketplace listings are accurate.
+
 ## After Scaffolding
 
 - Run `cargo build` to verify compilation
