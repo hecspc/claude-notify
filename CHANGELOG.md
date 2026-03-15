@@ -4,12 +4,17 @@ All notable changes to claude-notify are documented here.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-03-15
+
 ### Added
 - WhatsApp notification backend via Meta Cloud API (`claude-notify setup whatsapp <PHONE_ID> <TOKEN> <RECIPIENT>`)
 - OpenClaw notification backend via Gateway API (`claude-notify setup openclaw <URL> <TOKEN> <TARGET>`)
+- Claude Code plugin (`plugin/`) for auto-hook registration and namespaced skills
+- Plugin manifest at repo root (`.claude-plugin/plugin.json`) for marketplace discovery
+- 16 plugin skills: setup for all 11 backends + mute, unmute, use, status, session
 - `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_RECIPIENT` environment variable overrides
 - `OPENCLAW_GATEWAY_URL`, `OPENCLAW_TOKEN`, `OPENCLAW_TARGET`, `OPENCLAW_CHANNEL` environment variable overrides
-- `/claude-notify:setup-whatsapp` and `/claude-notify:setup-openclaw` plugin skills
+- Default install directory changed from `~/.bin` to `~/.local/bin`
 
 ## [1.1.3] - 2026-03-15
 

@@ -19,7 +19,8 @@ Bump the version, update the changelog, commit, and push to trigger the GitHub A
 4. Update `CHANGELOG.md`:
    - Rename `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD` (using today's date).
    - Add a new empty `## [Unreleased]` section above it.
-5. Run `cargo build` to verify compilation.
-6. Commit both files with message: `Release vX.Y.Z`
-7. Push to both `origin` and `upstream`.
-8. Show the user the new version and remind them that the GitHub Actions workflow will create the tag and release automatically.
+5. Run `cargo build --release` to verify compilation and produce the release binary.
+6. Copy the release binary to `~/.local/bin/claude-notify` so the local install is up to date.
+7. Commit both files with message: `Release vX.Y.Z`
+8. Push to both `origin` and `upstream`.
+9. Show the user the new version and remind them that the GitHub Actions workflow will create the tag and release automatically.
