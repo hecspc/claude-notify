@@ -8,7 +8,44 @@ Built in Rust for a single native binary with no runtime dependencies.
 
 When running Claude Code sessions (especially long-running or parallel ones), sessions sit idle waiting for attention. `claude-notify` sends notifications so you can monitor from mobile or another screen — and quickly switch between backends depending on where you are.
 
-## Install
+## Claude Code Plugin
+
+The easiest way to use `claude-notify` is as a Claude Code plugin. The plugin auto-registers all hooks and provides namespaced slash commands — no manual configuration needed.
+
+```bash
+# 1. Install the binary
+curl -sSL https://raw.githubusercontent.com/hecspc/claude-notify/main/install.sh | sh
+
+# 2. Install the plugin (auto-registers hooks)
+claude plugin install claude-notify
+
+# 3. Configure a backend via slash command
+/claude-notify:setup-desktop
+/claude-notify:setup-telegram <BOT_TOKEN> <CHAT_ID>
+```
+
+### Plugin Skills
+
+| Skill | Description |
+|---|---|
+| `/claude-notify:setup-desktop` | Enable native OS notifications (zero-config) |
+| `/claude-notify:setup-telegram` | Configure Telegram bot notifications |
+| `/claude-notify:setup-slack` | Configure Slack webhook notifications |
+| `/claude-notify:setup-discord` | Configure Discord webhook notifications |
+| `/claude-notify:setup-ntfy` | Configure ntfy push notifications |
+| `/claude-notify:setup-pushbullet` | Configure Pushbullet notifications |
+| `/claude-notify:setup-teams` | Configure Microsoft Teams notifications |
+| `/claude-notify:setup-webhook` | Configure generic webhook notifications |
+| `/claude-notify:setup-email` | Configure email (SMTP) notifications |
+| `/claude-notify:use` | Switch active backends (e.g. `desktop,slack`) |
+| `/claude-notify:mute` | Mute notifications globally or for a session |
+| `/claude-notify:unmute` | Unmute notifications |
+| `/claude-notify:status` | Show current mute status |
+| `/claude-notify:session` | Toggle mute for the current session |
+
+## Install (without plugin)
+
+If you prefer not to use the plugin, you can install the binary and use `setup` to configure hooks manually.
 
 ```bash
 # Install latest version
@@ -304,26 +341,6 @@ Any 2xx response is treated as success.
 1. Message [@BotFather](https://t.me/BotFather) on Telegram, send `/newbot`, and follow the prompts to get a bot token
 2. Message [@userinfobot](https://t.me/userinfobot) to get your chat ID
 3. Run `claude-notify setup telegram <BOT_TOKEN> <CHAT_ID>`
-
-## Claude Code Plugin
-
-Instead of using `setup`, you can install `claude-notify` as a Claude Code plugin. The plugin auto-registers all hooks and provides namespaced slash commands — no manual `settings.json` editing needed.
-
-```bash
-# 1. Install the binary
-curl -sSL https://raw.githubusercontent.com/hecspc/claude-notify/main/install.sh | sh
-
-# 2. Install the plugin
-claude plugin install claude-notify
-
-# 3. Configure a backend via skill
-/claude-notify:setup-desktop
-/claude-notify:setup-telegram <BOT_TOKEN> <CHAT_ID>
-```
-
-Plugin skills: `/claude-notify:setup-desktop`, `/claude-notify:setup-telegram`, `/claude-notify:setup-slack`, `/claude-notify:setup-discord`, `/claude-notify:setup-ntfy`, `/claude-notify:setup-pushbullet`, `/claude-notify:setup-teams`, `/claude-notify:setup-webhook`, `/claude-notify:setup-email`, `/claude-notify:use`, `/claude-notify:mute`, `/claude-notify:unmute`, `/claude-notify:status`, `/claude-notify:session`.
-
-See [plugin/README.md](plugin/README.md) for details.
 
 ## Hook Configuration
 

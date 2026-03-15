@@ -36,9 +36,9 @@ src/
     release/SKILL.md   # /release: bump version, update changelog, commit, push
     dry-run/SKILL.md   # /dry-run: test notification formatting
     add-backend/SKILL.md # /add-backend: scaffold a new backend
+.claude-plugin/
+  plugin.json            # Plugin manifest at repo root for marketplace discovery
 plugin/                  # Claude Code plugin (alternative to setup for hook wiring)
-  .claude-plugin/
-    plugin.json          # Plugin manifest: name, version, description, author
   hooks/
     hooks.json           # Auto-registered hooks: Notification, Stop, TaskCompleted
   skills/                # Namespaced skills (/claude-notify:setup-*, mute, unmute, use, status, session)
@@ -362,9 +362,9 @@ The `/notify-session` skill uses Claude Code's `${CLAUDE_SESSION_ID}` string sub
 
 The `plugin/` directory contains a Claude Code plugin that provides an alternative installation path. Instead of running `claude-notify setup` to write hooks into `settings.json`, users can install the plugin which auto-registers hooks on install.
 
-### `plugin/.claude-plugin/plugin.json`
+### `.claude-plugin/plugin.json`
 
-Standard plugin manifest with name, version, description, and author. Version is kept in sync with `Cargo.toml`.
+Standard plugin manifest at the repo root (required for marketplace discovery). Contains name, version, description, and author. Version is kept in sync with `Cargo.toml`.
 
 ### `plugin/hooks/hooks.json`
 

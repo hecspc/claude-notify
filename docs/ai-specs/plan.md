@@ -146,9 +146,9 @@ src/
     email.rs           # EmailNotifier: lettre SMTP with STARTTLS (port 587)
   setup.rs             # run_setup() writes backend config + hooks + skills (--user or --project scope)
 install.sh             # curl-based installer, detects OS/arch, downloads from GitHub releases
+.claude-plugin/
+  plugin.json          # Plugin manifest at repo root for marketplace discovery
 plugin/                # Claude Code plugin (hooks + skills, auto-registers on install)
-  .claude-plugin/
-    plugin.json        # Plugin manifest
   hooks/
     hooks.json         # Auto-registered hook configurations
   skills/              # Namespaced skills (/claude-notify:setup-telegram, etc.)
@@ -290,9 +290,9 @@ The project includes a Claude Code plugin for seamless integration. The plugin l
 ### Plugin Structure
 
 ```
+.claude-plugin/
+  plugin.json                # Manifest at repo root for marketplace discovery
 plugin/
-  .claude-plugin/
-    plugin.json              # Manifest: name, version, description
   hooks/
     hooks.json               # Auto-registers Notification, Stop, TaskCompleted hooks
   skills/
