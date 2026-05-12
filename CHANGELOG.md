@@ -4,6 +4,16 @@ All notable changes to claude-notify are documented here.
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-05-12
+
+### Fixed
+- macOS desktop notification click action now reliably opens the configured app. Internally translates `activate_bundle_id` to `open -b <BUNDLE_ID>` via `terminal-notifier -execute`, because `terminal-notifier`'s native `-activate` flag is broken on macOS 11+.
+
+### Added
+- `claude-notify setup desktop --app-icon <PATH>` — custom notification icon (`.png`/`.jpg`/`.icns`)
+- `[desktop].app_icon` config field
+- `DESKTOP_APP_ICON` environment variable override
+
 ## [1.3.0] - 2026-05-12
 
 ### Added
