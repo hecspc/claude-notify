@@ -4,6 +4,19 @@ All notable changes to claude-notify are documented here.
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-05-12
+
+### Added
+- Configurable macOS desktop notification click target via `terminal-notifier`
+- `claude-notify setup desktop --activate <BUNDLE_ID>` — click opens the given app (e.g. `com.mitchellh.ghostty`, `com.googlecode.iterm2`)
+- `claude-notify setup desktop --execute <COMMAND>` — click runs an arbitrary shell command (overrides `--activate`)
+- `[desktop]` config section with `activate_bundle_id` and `execute` fields
+- `DESKTOP_ACTIVATE_BUNDLE_ID` and `DESKTOP_EXECUTE` environment variable overrides
+- Default click target is `com.apple.Terminal` when `terminal-notifier` is installed
+
+### Changed
+- macOS `DesktopNotifier` prefers `terminal-notifier` when available, falls back to `osascript`
+
 ## [1.2.0] - 2026-03-15
 
 ### Added
