@@ -4,6 +4,12 @@ All notable changes to claude-notify are documented here.
 
 ## [Unreleased]
 
+## [1.3.2] - 2026-05-12
+
+### Fixed
+- macOS desktop notification click action no longer swallowed: removed the `-sender` flag, which on macOS Tahoe (26.x) routed click callbacks to a spoofed bundle and broke the `-execute` callback.
+- `app_icon` is now also passed via `-contentImage` so the configured icon actually shows on macOS Tahoe, where `-appIcon` is locked to the sender process bundle.
+
 ## [1.3.1] - 2026-05-12
 
 ### Fixed
