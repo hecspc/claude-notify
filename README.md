@@ -316,6 +316,8 @@ claude-notify setup desktop --activate com.mitchellh.ghostty \
 
 Internally `--activate <BUNDLE_ID>` is translated to `-execute "open -b <BUNDLE_ID>"` because `terminal-notifier`'s native `-activate` flag is unreliable on macOS 11+.
 
+On macOS Tahoe (26.x) the notification's left app icon is locked to the sender process bundle and cannot be overridden, so `--app-icon` is also passed via `-contentImage` to show as the right-side thumbnail.
+
 Common bundle ids:
 
 | App | Bundle id |

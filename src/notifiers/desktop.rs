@@ -57,6 +57,8 @@ impl Notifier for DesktopNotifier {
                 // execute wins over activate. Translate activate_bundle_id to
                 // `open -b <bundle>` because -activate is unreliable on macOS 11+
                 // (NSWorkspace launch path broken in terminal-notifier 2.0.0).
+                // Do NOT pass -sender: it makes macOS swallow the click callback
+                // and locks the left app icon to the spoofed bundle.
                 if let Some(exec) = &self.execute {
                     cmd.arg("-execute").arg(exec);
                 } else {
@@ -65,11 +67,14 @@ impl Notifier for DesktopNotifier {
                         .clone()
                         .unwrap_or_else(|| "com.apple.Terminal".to_string());
                     cmd.arg("-execute").arg(format!("open -b {}", bundle));
-                    cmd.arg("-sender").arg(&bundle);
                 }
 
+                // macOS Tahoe locks the left app icon to the sender process,
+                // so -appIcon is ignored. -contentImage (right-side thumbnail)
+                // still works. Pass to both for forward compatibility.
                 if let Some(icon) = &self.app_icon {
                     cmd.arg("-appIcon").arg(icon);
+                    cmd.arg("-contentImage").arg(icon);
                 }
 
                 let status = cmd.status()?;
