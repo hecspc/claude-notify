@@ -80,6 +80,11 @@ pub enum SetupBackend {
         /// Overrides --activate. Requires `terminal-notifier`.
         #[arg(long)]
         execute: Option<String>,
+
+        /// macOS only: path to image (.png/.jpg/.icns) to display as the
+        /// notification icon (e.g. a Claude Code logo). Requires `terminal-notifier`.
+        #[arg(long)]
+        app_icon: Option<String>,
     },
     /// Configure email notifications via SMTP
     Email {

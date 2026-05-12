@@ -80,7 +80,7 @@ fn write_backend_config(backend: &SetupBackend) -> Result<(), Box<dyn std::error
             );
             config.insert("slack".to_string(), toml::Value::Table(slack_table));
         }
-        SetupBackend::Desktop { activate, execute } => {
+        SetupBackend::Desktop { activate, execute, app_icon } => {
             let backends = config
                 .entry("backends")
                 .or_insert(toml::Value::Array(vec![]));
@@ -91,7 +91,7 @@ fn write_backend_config(backend: &SetupBackend) -> Result<(), Box<dyn std::error
                 }
             }
 
-            if activate.is_some() || execute.is_some() {
+            if activate.is_some() || execute.is_some() || app_icon.is_some() {
                 let mut desk_table = toml::Table::new();
                 if let Some(v) = activate {
                     desk_table.insert(
@@ -101,6 +101,9 @@ fn write_backend_config(backend: &SetupBackend) -> Result<(), Box<dyn std::error
                 }
                 if let Some(v) = execute {
                     desk_table.insert("execute".to_string(), toml::Value::String(v.clone()));
+                }
+                if let Some(v) = app_icon {
+                    desk_table.insert("app_icon".to_string(), toml::Value::String(v.clone()));
                 }
                 config.insert("desktop".to_string(), toml::Value::Table(desk_table));
             }

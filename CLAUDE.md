@@ -18,6 +18,7 @@ cargo run -- setup slack <WEBHOOK_URL>                          # configure Slac
 cargo run -- setup desktop                                      # configure native OS notifications
 cargo run -- setup desktop --activate com.mitchellh.ghostty     # macOS: click opens that bundle id (needs terminal-notifier)
 cargo run -- setup desktop --execute 'open -a Ghostty'          # macOS: click runs shell command (overrides --activate)
+cargo run -- setup desktop --app-icon /path/to/icon.png         # macOS: custom notification icon (overrides bundle id icon)
 cargo run -- setup email <FROM> <TO> <SMTP_HOST> <USER> <PASS>  # configure email via SMTP
 cargo run -- setup discord <WEBHOOK_URL>                        # configure Discord notifications
 cargo run -- setup ntfy <TOPIC_URL>                             # configure ntfy notifications

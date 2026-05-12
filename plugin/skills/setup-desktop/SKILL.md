@@ -16,6 +16,7 @@ By default, clicking a macOS notification opens Script Editor. To make a click o
 - `brew install terminal-notifier`
 - `claude-notify setup desktop --activate <BUNDLE_ID>` — click opens that app
 - `claude-notify setup desktop --execute '<COMMAND>'` — click runs the command (overrides `--activate`)
+- `claude-notify setup desktop --app-icon <PATH>` — custom notification icon (.png/.jpg/.icns)
 
 Common bundle ids: `com.apple.Terminal`, `com.googlecode.iterm2`, `com.mitchellh.ghostty`, `net.kovidgoyal.kitty`, `com.github.wez.wezterm`, `org.alacritty`, `dev.warp.Warp-Stable`, `com.microsoft.VSCode`.
 

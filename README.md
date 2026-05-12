@@ -308,7 +308,13 @@ claude-notify setup desktop --activate com.mitchellh.ghostty
 
 # Click runs an arbitrary command (overrides --activate)
 claude-notify setup desktop --execute 'open -a Ghostty'
+
+# Custom notification icon (e.g. Claude logo)
+claude-notify setup desktop --activate com.mitchellh.ghostty \
+  --app-icon /Applications/Claude.app/Contents/Resources/AppIcon.icns
 ```
+
+Internally `--activate <BUNDLE_ID>` is translated to `-execute "open -b <BUNDLE_ID>"` because `terminal-notifier`'s native `-activate` flag is unreliable on macOS 11+.
 
 Common bundle ids:
 
@@ -323,7 +329,7 @@ Common bundle ids:
 | Warp | `dev.warp.Warp-Stable` |
 | VS Code | `com.microsoft.VSCode` |
 
-Find a bundle id with `osascript -e 'id of app "AppName"'`. Env overrides: `DESKTOP_ACTIVATE_BUNDLE_ID`, `DESKTOP_EXECUTE`.
+Find a bundle id with `osascript -e 'id of app "AppName"'`. Env overrides: `DESKTOP_ACTIVATE_BUNDLE_ID`, `DESKTOP_EXECUTE`, `DESKTOP_APP_ICON`.
 
 ## Discord Setup
 

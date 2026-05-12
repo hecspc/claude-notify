@@ -5,6 +5,7 @@ use std::process::Command;
 pub struct DesktopNotifier {
     activate_bundle_id: Option<String>,
     execute: Option<String>,
+    app_icon: Option<String>,
 }
 
 impl DesktopNotifier {
@@ -12,6 +13,7 @@ impl DesktopNotifier {
         Self {
             activate_bundle_id: config.and_then(|c| c.activate_bundle_id.clone()),
             execute: config.and_then(|c| c.execute.clone()),
+            app_icon: config.and_then(|c| c.app_icon.clone()),
         }
     }
 }
@@ -52,7 +54,9 @@ impl Notifier for DesktopNotifier {
                     .arg("-message").arg(body)
                     .arg("-group").arg("claude-notify");
 
-                // execute wins over activate
+                // execute wins over activate. Translate activate_bundle_id to
+                // `open -b <bundle>` because -activate is unreliable on macOS 11+
+                // (NSWorkspace launch path broken in terminal-notifier 2.0.0).
                 if let Some(exec) = &self.execute {
                     cmd.arg("-execute").arg(exec);
                 } else {
@@ -60,7 +64,12 @@ impl Notifier for DesktopNotifier {
                         .activate_bundle_id
                         .clone()
                         .unwrap_or_else(|| "com.apple.Terminal".to_string());
-                    cmd.arg("-activate").arg(&bundle).arg("-sender").arg(&bundle);
+                    cmd.arg("-execute").arg(format!("open -b {}", bundle));
+                    cmd.arg("-sender").arg(&bundle);
+                }
+
+                if let Some(icon) = &self.app_icon {
+                    cmd.arg("-appIcon").arg(icon);
                 }
 
                 let status = cmd.status()?;
