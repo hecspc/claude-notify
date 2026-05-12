@@ -39,7 +39,9 @@ pub fn build_notifiers(config: &Config) -> Vec<Box<dyn Notifier>> {
                 }
             }
             "desktop" => {
-                notifiers.push(Box::new(desktop::DesktopNotifier::new()));
+                notifiers.push(Box::new(desktop::DesktopNotifier::new(
+                    config.desktop.as_ref(),
+                )));
             }
             "discord" => {
                 if let Some(discord_config) = &config.discord {

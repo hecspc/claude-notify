@@ -80,7 +80,7 @@ fn write_backend_config(backend: &SetupBackend) -> Result<(), Box<dyn std::error
             );
             config.insert("slack".to_string(), toml::Value::Table(slack_table));
         }
-        SetupBackend::Desktop => {
+        SetupBackend::Desktop { activate, execute } => {
             let backends = config
                 .entry("backends")
                 .or_insert(toml::Value::Array(vec![]));
@@ -89,6 +89,20 @@ fn write_backend_config(backend: &SetupBackend) -> Result<(), Box<dyn std::error
                 if !arr.contains(&desktop) {
                     arr.push(desktop);
                 }
+            }
+
+            if activate.is_some() || execute.is_some() {
+                let mut desk_table = toml::Table::new();
+                if let Some(v) = activate {
+                    desk_table.insert(
+                        "activate_bundle_id".to_string(),
+                        toml::Value::String(v.clone()),
+                    );
+                }
+                if let Some(v) = execute {
+                    desk_table.insert("execute".to_string(), toml::Value::String(v.clone()));
+                }
+                config.insert("desktop".to_string(), toml::Value::Table(desk_table));
             }
         }
         SetupBackend::Email { from, to, smtp_host, smtp_username, smtp_password } => {

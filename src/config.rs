@@ -27,6 +27,18 @@ pub struct Config {
     pub whatsapp: Option<WhatsappConfig>,
     #[serde(default)]
     pub openclaw: Option<OpenclawConfig>,
+    #[serde(default)]
+    pub desktop: Option<DesktopConfig>,
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct DesktopConfig {
+    /// macOS: bundle id to activate when notification is clicked
+    /// (e.g. com.apple.Terminal, com.googlecode.iterm2, com.mitchellh.ghostty)
+    pub activate_bundle_id: Option<String>,
+    /// macOS: shell command to run when notification is clicked.
+    /// Overrides `activate_bundle_id` when set.
+    pub execute: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
@@ -208,6 +220,18 @@ impl Config {
             }
             if let Ok(val) = std::env::var("WHATSAPP_RECIPIENT") {
                 wa.recipient = Some(val);
+            }
+        }
+
+        let has_desktop_env = std::env::var("DESKTOP_ACTIVATE_BUNDLE_ID").is_ok()
+            || std::env::var("DESKTOP_EXECUTE").is_ok();
+        if has_desktop_env {
+            let desktop = self.desktop.get_or_insert_with(DesktopConfig::default);
+            if let Ok(val) = std::env::var("DESKTOP_ACTIVATE_BUNDLE_ID") {
+                desktop.activate_bundle_id = Some(val);
+            }
+            if let Ok(val) = std::env::var("DESKTOP_EXECUTE") {
+                desktop.execute = Some(val);
             }
         }
 

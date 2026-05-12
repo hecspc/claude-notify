@@ -16,6 +16,8 @@ cargo run -- setup telegram <BOT_TOKEN> <CHAT_ID>               # configure cred
 cargo run -- setup telegram <BOT_TOKEN> <CHAT_ID> --project     # configure hooks in current project
 cargo run -- setup slack <WEBHOOK_URL>                          # configure Slack notifications
 cargo run -- setup desktop                                      # configure native OS notifications
+cargo run -- setup desktop --activate com.mitchellh.ghostty     # macOS: click opens that bundle id (needs terminal-notifier)
+cargo run -- setup desktop --execute 'open -a Ghostty'          # macOS: click runs shell command (overrides --activate)
 cargo run -- setup email <FROM> <TO> <SMTP_HOST> <USER> <PASS>  # configure email via SMTP
 cargo run -- setup discord <WEBHOOK_URL>                        # configure Discord notifications
 cargo run -- setup ntfy <TOPIC_URL>                             # configure ntfy notifications

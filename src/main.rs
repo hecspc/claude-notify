@@ -69,7 +69,18 @@ pub enum SetupBackend {
         webhook_url: String,
     },
     /// Configure desktop notifications (zero-config, uses native OS)
-    Desktop,
+    Desktop {
+        /// macOS only: bundle id to open when notification is clicked
+        /// (e.g. com.apple.Terminal, com.googlecode.iterm2, com.mitchellh.ghostty).
+        /// Requires `terminal-notifier` (brew install terminal-notifier).
+        #[arg(long)]
+        activate: Option<String>,
+
+        /// macOS only: shell command to run when notification is clicked.
+        /// Overrides --activate. Requires `terminal-notifier`.
+        #[arg(long)]
+        execute: Option<String>,
+    },
     /// Configure email notifications via SMTP
     Email {
         /// Sender email address

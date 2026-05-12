@@ -1,11 +1,18 @@
+use crate::config::DesktopConfig;
 use crate::notifier::Notifier;
 use std::process::Command;
 
-pub struct DesktopNotifier;
+pub struct DesktopNotifier {
+    activate_bundle_id: Option<String>,
+    execute: Option<String>,
+}
 
 impl DesktopNotifier {
-    pub fn new() -> Self {
-        Self
+    pub fn new(config: Option<&DesktopConfig>) -> Self {
+        Self {
+            activate_bundle_id: config.and_then(|c| c.activate_bundle_id.clone()),
+            execute: config.and_then(|c| c.execute.clone()),
+        }
     }
 }
 
@@ -17,6 +24,19 @@ fn html_to_plain(html: &str) -> String {
         .replace("&gt;", ">")
 }
 
+#[cfg(target_os = "macos")]
+fn terminal_notifier_path() -> Option<String> {
+    let out = Command::new("/usr/bin/which")
+        .arg("terminal-notifier")
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let path = String::from_utf8(out.stdout).ok()?.trim().to_string();
+    if path.is_empty() { None } else { Some(path) }
+}
+
 impl Notifier for DesktopNotifier {
     fn send(&self, message: &str) -> Result<(), Box<dyn std::error::Error>> {
         let plain = html_to_plain(message);
@@ -25,6 +45,32 @@ impl Notifier for DesktopNotifier {
         let body = lines.next().unwrap_or("");
 
         if cfg!(target_os = "macos") {
+            #[cfg(target_os = "macos")]
+            if let Some(tn) = terminal_notifier_path() {
+                let mut cmd = Command::new(&tn);
+                cmd.arg("-title").arg(title)
+                    .arg("-message").arg(body)
+                    .arg("-group").arg("claude-notify");
+
+                // execute wins over activate
+                if let Some(exec) = &self.execute {
+                    cmd.arg("-execute").arg(exec);
+                } else {
+                    let bundle = self
+                        .activate_bundle_id
+                        .clone()
+                        .unwrap_or_else(|| "com.apple.Terminal".to_string());
+                    cmd.arg("-activate").arg(&bundle).arg("-sender").arg(&bundle);
+                }
+
+                let status = cmd.status()?;
+                if !status.success() {
+                    return Err("terminal-notifier failed".into());
+                }
+                return Ok(());
+            }
+
+            // Fallback: osascript. Click opens Script Editor (no way to override).
             let script = format!(
                 "display notification \"{}\" with title \"{}\"",
                 body.replace('\\', "\\\\").replace('"', "\\\""),
@@ -36,6 +82,12 @@ impl Notifier for DesktopNotifier {
                 .status()?;
             if !status.success() {
                 return Err("osascript failed".into());
+            }
+            if self.activate_bundle_id.is_some() || self.execute.is_some() {
+                eprintln!(
+                    "claude-notify: install `terminal-notifier` (brew install terminal-notifier) \
+                     to make desktop notification clicks honor activate_bundle_id/execute."
+                );
             }
         } else if cfg!(target_os = "linux") {
             let status = Command::new("notify-send")

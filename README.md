@@ -291,7 +291,39 @@ events = ["permission_prompt", "idle_prompt", "elicitation_dialog", "task_comple
 
 ## Desktop Setup
 
-No configuration needed — just run `claude-notify setup desktop`. Uses `osascript` on macOS, `notify-send` on Linux, and PowerShell toast notifications on Windows.
+Zero-config: `claude-notify setup desktop`. Uses `osascript` on macOS, `notify-send` on Linux, and PowerShell toast notifications on Windows.
+
+### macOS click behavior
+
+By default `osascript` notifications open Script Editor when clicked. To make a click open your terminal (or any app/command) instead, install [`terminal-notifier`](https://github.com/julienXX/terminal-notifier) and pass `--activate` or `--execute`:
+
+```bash
+brew install terminal-notifier
+
+# Click opens Terminal (default when terminal-notifier present)
+claude-notify setup desktop
+
+# Click opens a specific terminal
+claude-notify setup desktop --activate com.mitchellh.ghostty
+
+# Click runs an arbitrary command (overrides --activate)
+claude-notify setup desktop --execute 'open -a Ghostty'
+```
+
+Common bundle ids:
+
+| App | Bundle id |
+|---|---|
+| Terminal | `com.apple.Terminal` |
+| iTerm2 | `com.googlecode.iterm2` |
+| Ghostty | `com.mitchellh.ghostty` |
+| Kitty | `net.kovidgoyal.kitty` |
+| WezTerm | `com.github.wez.wezterm` |
+| Alacritty | `org.alacritty` |
+| Warp | `dev.warp.Warp-Stable` |
+| VS Code | `com.microsoft.VSCode` |
+
+Find a bundle id with `osascript -e 'id of app "AppName"'`. Env overrides: `DESKTOP_ACTIVATE_BUNDLE_ID`, `DESKTOP_EXECUTE`.
 
 ## Discord Setup
 
